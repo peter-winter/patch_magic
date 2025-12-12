@@ -1,5 +1,9 @@
 #pragma once
 
+#include "program.hpp"
+#include "runtime_processors.hpp"
+#include "states.hpp"
+
 namespace patch_magic
 {
 
@@ -11,19 +15,21 @@ template<>
 struct op_descr<sine>
 {
     using rt_state = sine_state;
-    loaded_op::process_fn process_fn_{process_sine};
+    runtime_op::process_fn process_fn_{process_sine};
+    
+    auto in_descr() { return std::make_tuple(&sine::freq_); }
+    auto out_descr() { return &sine::out_; }
 };
 
 template<>
 struct op_descr<vol>
 {
     using rt_state = stateless;
-    loaded_op::process_fn process_fn_{process_vol};
+    runtime_op::process_fn process_fn_{process_vol};
+    
+    auto in_descr() { return std::make_tuple(&vol::gain_, &vol::in_); }
+    auto out_descr() { return &vol::out_; }
 };
 
-constexpr auto op_descriptions = std::make_tuple(
-    op_descr<sine>{},
-    op_descr<vol>{}
-);
 
 }

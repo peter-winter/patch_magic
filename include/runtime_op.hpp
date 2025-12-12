@@ -9,7 +9,7 @@ struct runtime_data;
 
 struct runtime_op
 {
-    using process_fn = void(*)(runtime_data&, const loaded_op&);
+    using process_fn = void(*)(runtime_data&, const runtime_op&);
     using load_fn = float(*)(const runtime_data&, std::size_t);
     using store_fn = void(*)(runtime_data&, std::size_t, float);
     

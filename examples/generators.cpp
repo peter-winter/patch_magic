@@ -9,10 +9,11 @@ int generators()
 {
     try
     {
-        synth s;
-
-        std::cout << "=== 440 Hz sine wave ===\n";
         {
+            std::cout << "=== 440 Hz sine wave ===\n";
+            
+            synth s(480000, 2);
+            
             program p;
             p.ops_ = {
                 sine{ cnst_f{440.0f}, reg_f{0} },
@@ -20,11 +21,20 @@ int generators()
                 vol { cnst_f{0.7f}, reg_f{0}, out{1} }
             };
             s.load(p);
-            s.play();  // blocks until Enter is pressed
+            
+            std::cout << "press Enter to play...\n";
+            std::cin.get();
+            
+            s.play();
+            
+            std::cout << "press Enter to stop...\n";
+            std::cin.get();
         }
-
-        std::cout << "\n===  Detuned stereo (440 Hz + 442 Hz) ===\n";
+        
         {
+            std::cout << "===  Detuned stereo (440 Hz + 442 Hz) ===\n";
+            
+            synth s(480000, 2);
             program p;
             p.ops_ = {
                 sine{ cnst_f{440.0f}, reg_f{0} },
@@ -33,10 +43,17 @@ int generators()
                 vol { cnst_f{0.4f}, reg_f{1}, out{1} }
             };
             s.load(p);
+            
+            std::cout << "press Enter to play...\n";
+            std::cin.get();
+            
             s.play();
+            
+            std::cout << "press Enter to stop...\n";
+            std::cin.get();
         }
 
-        std::cout << "\nAll examples finished.\n";
+        std::cout << "All examples finished.\n";
     }
     catch (const std::exception& e)
     {

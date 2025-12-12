@@ -1,16 +1,13 @@
-#pragma once
-
 #include <cmath>
 #include <cstddef>
 
 #include "runtime_processors.hpp"
 #include "runtime.hpp"
-#include "primitives.hpp"
 
 namespace patch_magic
 {
     
-inline void process_sine(runtime_data& rd, const runtime_op& op)
+void process_sine(runtime_data& rd, const runtime_op& op)
 {
     constexpr float two_pi = 2.0f * 3.14159265358979323846f;
     
@@ -23,7 +20,7 @@ inline void process_sine(runtime_data& rd, const runtime_op& op)
     op.store_(rd, op.store_idx_, std::sin(st.phase_));
 }
 
-inline void process_vol(runtime_data& rd, const runtime_op& op)
+void process_vol(runtime_data& rd, const runtime_op& op)
 {
     float gain = op.load_arg0_(rd, op.arg0_idx_);
     float in   = op.load_arg1_(rd, op.arg1_idx_);
