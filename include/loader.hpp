@@ -1,10 +1,9 @@
 #pragma once
 
-#include "op_descriptions.hpp"
-#include "runtime_op.hpp"
-#include "program.hpp"
+#include "runtime_processor_wrappers.hpp"
+#include "source.hpp"
 #include "runtime.hpp"
-#include "primitives.hpp"
+#include "invoker.hpp"
 
 #include <stdexcept>
 
@@ -18,128 +17,83 @@ public:
         rd_(rd)
     {}
     
-    void load(const prog_ops& ops)
-    {
-        visit_all(ops, [&]<typename Op>(const Op& op, auto idx){ rd_.ops_.emplace_back(load_op(op, idx)); });
-    }
-    
-    void create_states(const prog_ops& ops)
-    {
-        visit_all(ops, [&]<typename Op>(const Op&, auto){ rd_.states_.emplace_back(typename op_descr<Op>::rt_state{}); });
-    }
-        
-private:
-    template<typename F>
-    void visit_all(const prog_ops& ops, F f)
+    void load(const std::vector<source_op>& src_ops)
     {
         size_t idx = 0;
-        for (const auto& prog_op : ops)
+        for (const auto& src_op : src_ops)
         {
+            rd_.ops_.emplace_back(create_runtime_op(idx, src_op));
+            
             std::visit(
-                [&]<typename Op>(const Op& op)
+                [&]<typename Wrapper>(const Wrapper&)
                 {
-                    f(op, idx);
+                    using state_t = runtime_processor_state_t<Wrapper>;
+                    if constexpr (!std::is_same_v<stateless, state_t>)
+                        rd_.add_state<state_t>();
                 },
-                prog_op
+                src_op.op_
             );
+            
             ++idx;
         }
     }
-    
-    template<typename Op>
-    runtime_op load_op(const Op& src, size_t op_idx)
-    {
-        runtime_op op{};
-        op_descr<Op> descr;
         
-        op.process_ = descr.process_fn_;
+private:
+    runtime_op create_runtime_op(size_t op_idx, const source_op& src_op)
+    {
+        return std::visit(
+            [&]<typename Wrapper>(const Wrapper&){ return create_runtime_op<Wrapper>(op_idx, src_op.out_idx_, src_op.ins_); },
+            src_op.op_
+        );
+    }
+
+    template<typename Wrapper>
+    runtime_op create_runtime_op(size_t op_idx, size_t out_idx, const source_in_args_array_t& ins)
+    {
+        runtime_op op;
+        op.process_ = invoker<Wrapper::proc>::invoke;
         op.state_idx_ = op_idx;
-        bind_ins(src, descr.in_descr(), op);
-        bind_out(src, descr.out_descr(), op);
+        op.store_idx_ = out_idx;
+        bind_ins(ins, op, std::make_index_sequence<Wrapper::in_arg_count>{});
         return op;
     }
     
-    template<typename Op, typename InsDescr>
-    void bind_ins(const Op& op, const InsDescr& ins, runtime_op& rt_op)
+    size_t get_arg_idx(const source_in_arg& i)
     {
-        const auto op_in0_descr = op.*(std::get<0>(ins));
-        rt_op.arg0_idx_ = load_in_idx(op_in0_descr);
-        rt_op.load_arg0_ = load_in_fn(op_in0_descr);
-        if constexpr (std::tuple_size_v<InsDescr> > 1)
+        if (std::holds_alternative<source_const_f>(i))
         {
-            const auto op_in1_descr = op.*(std::get<1>(ins));
-            rt_op.arg1_idx_ = load_in_idx(op_in1_descr);
-            rt_op.load_arg1_ = load_in_fn(op_in1_descr);
+            rd_.constants_f_.push_back(std::get<source_const_f>(i).v_);
+            return rd_.constants_f_.size() - 1;
         }
-    }
-    
-    template<typename Op, typename OutDescr>
-    void bind_out(const Op& op, const OutDescr& os, runtime_op& rt_op)
-    {
-        const auto op_out_descr = op.*os;
-        rt_op.store_idx_ = load_out_idx(op_out_descr);
-        rt_op.store_ = load_out_fn(op_out_descr);
-    }
-    
-    template<typename In>
-    size_t load_in_idx(const In& i)
-    {
-        if (std::holds_alternative<cnst_f>(i))
+        else if (std::holds_alternative<source_const_i>(i))
         {
-            rd_.constants_.push_back(std::get<cnst_f>(i).val_);
-            return rd_.constants_.size() - 1;
+            rd_.constants_i_.push_back(std::get<source_const_i>(i).v_);
+            return rd_.constants_i_.size() - 1;
         }
+        else if (std::holds_alternative<source_reg_f>(i))
+            return std::get<source_reg_f>(i).idx_;
         else
-        {
-            return get_reg_idx(std::get<reg_f>(i));
-        }
+            return std::get<source_reg_i>(i).idx_;
     }
     
-    template<typename Out>
-    size_t load_out_idx(const Out& o)
+    template<size_t I>
+    void bind_loader(const source_in_arg& i, runtime_op& op)
     {
-        if (std::holds_alternative<out>(o))
-        {
-            return get_out_idx(std::get<out>(o));
-        }
+        if (std::holds_alternative<source_const_f>(i))
+            op.loader_idx_[I] = arg_loader_type::loader_const;
+        else if (std::holds_alternative<source_const_i>(i))
+            op.loader_idx_[I] = arg_loader_type::loader_const;
+        else if (std::holds_alternative<source_reg_f>(i))
+            op.loader_idx_[I] = arg_loader_type::loader_reg;
         else
-        {
-            return get_reg_idx(std::get<reg_f>(o));
-        }
+            op.loader_idx_[I] = arg_loader_type::loader_reg;
     }
-    
-    size_t get_reg_idx(const reg_f& r)
+
+    template<size_t... I>
+    void bind_ins(const source_in_args_array_t& ins, runtime_op& rt_op, std::index_sequence<I...>)
     {
-        size_t idx = r.idx_;
-        if (idx >= rd_.reg_count_)
-            throw std::out_of_range("Out of range register idx");
-        return idx;
-    }
-    
-    size_t get_out_idx(const out& o)
-    {
-        size_t idx = o.idx_;
-        if (idx >= rd_.channel_count_)
-            throw std::out_of_range("Out of range output idx");
-        return idx;
-    }
-    
-    template<typename In>
-    runtime_op::load_fn load_in_fn(const In& i)
-    {
-        if (std::holds_alternative<cnst_f>(i))
-            return load_const;
-        else
-            return load_reg;
-    }
-    
-    template<typename Out>
-    runtime_op::store_fn load_out_fn(const Out& o)
-    {
-        if (std::holds_alternative<out>(o))
-            return store_out;
-        else
-            return store_reg;
+        ((rt_op.arg_idx_[I] = get_arg_idx(ins[I])), ...);
+        (bind_loader<I>(ins[I], rt_op), ...);
     }
     
     runtime_data& rd_;

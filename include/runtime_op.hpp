@@ -1,29 +1,30 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
+#include <array>
 
 namespace patch_magic
 {
 
 struct runtime_data;
 
+constexpr size_t max_runtime_processor_in_arg_count = 10;
+
+enum class arg_loader_type : size_t { loader_const = 0, loader_reg = 1};
+
 struct runtime_op
 {
     using process_fn = void(*)(runtime_data&, const runtime_op&);
-    using load_fn = float(*)(const runtime_data&, std::size_t);
-    using store_fn = void(*)(runtime_data&, std::size_t, float);
     
-    process_fn process_ = nullptr;
+    process_fn process_;
     
-    load_fn load_arg0_ = nullptr;
-    load_fn load_arg1_ = nullptr;
-    std::size_t arg0_idx_ = 0;
-    std::size_t arg1_idx_ = 0;
+    std::array<arg_loader_type, max_runtime_processor_in_arg_count> loader_idx_;
+    std::array<size_t, max_runtime_processor_in_arg_count> arg_idx_;
 
-    store_fn store_ = nullptr;
-    std::size_t store_idx_ = 0;
+    size_t store_idx_;
 
-    std::size_t state_idx_ = 0;
+    size_t state_idx_;
 };
 
 }

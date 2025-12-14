@@ -11,7 +11,7 @@
 namespace patch_magic
 {
 
-synth::synth(float sample_rate, size_t channels, size_t reg_count, size_t const_count):
+synth::synth(uint32_t sample_rate, size_t channels, size_t reg_count, size_t const_count):
     sample_rate_(sample_rate),
     channels_(channels),
     runtime_data_(sample_rate, channels, reg_count, const_count)
@@ -23,12 +23,11 @@ synth::~synth()
         ma_device_uninit(&device_);
 }
 
-void synth::load(const program& prog)
+void synth::load(const source& src)
 {
     loader ld(runtime_data_);
     
-    ld.load(prog.ops_);
-    ld.create_states(prog.ops_);
+    ld.load(src.ops_);
 }
 
 void synth::play()
@@ -63,7 +62,7 @@ void synth::data_callback(ma_device* device, void* p_output, const void*, ma_uin
             op.process_(rd, op);
         
         for (std::size_t ch = 0; ch < rd.channel_count_; ++ch)
-            *out++ = rd.outs_[ch];
+            *out++ = rd.regs_f_[0];
     }
 }
 
