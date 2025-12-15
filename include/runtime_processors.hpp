@@ -5,7 +5,6 @@
 #include <cstdint>
 
 #include "math.hpp"
-#include "states.hpp"
 
 namespace patch_magic
 {
@@ -13,6 +12,18 @@ namespace patch_magic
 struct sample_rate_wrapper
 {
     uint32_t value_;
+};
+
+struct stateless
+{
+    inline void reset() {}
+};
+
+struct sine_state
+{
+    double phase_ = 0.0f;
+    
+    inline void reset() { phase_ = 0.0f; }
 };
 
 inline float calc_sine(sine_state& s, sample_rate_wrapper sample_rate, float f) noexcept

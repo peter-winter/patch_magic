@@ -1,25 +1,36 @@
 #include "runtime.hpp"
+#include "polyphony.hpp"
 
 namespace patch_magic
 {
 
-runtime_data::runtime_data(uint32_t sample_rate, size_t channel_count, size_t reg_count, size_t const_count):
+runtime::runtime(size_t max_voice_count_per_instrument, uint32_t sample_rate, size_t channel_count, size_t reg_count_per_voice):
+    max_voice_count_per_instrument_(max_voice_count_per_instrument),
     sample_rate_(sample_rate),
     channel_count_(channel_count),
-    reg_count_(reg_count),
-    const_count_(const_count)
+    reg_count_per_voice_(reg_count_per_voice)
 {
-    clear();
+    reset();
 }
 
-void runtime_data::clear()
+void runtime::reset()
 {
-    constants_f_.resize(const_count_, 0.0f);
-    constants_i_.resize(const_count_, 0.0f);
-    regs_f_.resize(reg_count_, 0.0f);
-    regs_i_.resize(reg_count_, 0.0f);
-    states_ = runtime_processor_states_t{};
-    ops_.clear();
+    for (auto& instr : instruments_)
+        instr.reset();
 }
+
+void runtime::sample(float* data, size_t channel_count)
+{
+    float sum = 0.0f;
     
+    for (auto& instr : instruments_)
+    {
+        sum += instr.sample();
+    }
+    
+    float gain = polyphony_gain(instruments_.size(), polyphony_scale::equal_amplitude);
+    for (size_t i = 0; i < channel_count; ++i)
+        data[i] = sum * gain;
+}
+
 }

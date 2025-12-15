@@ -5,15 +5,12 @@
 
 #include <tuple>
 #include <type_traits>
-#include <array>
 #include <vector>
 #include <utility>
 #include <variant>
 
 namespace patch_magic
 {
-
-struct stateless {};
         
 template<typename RuntimeProcessor>
 struct runtime_processor_wrapper_impl

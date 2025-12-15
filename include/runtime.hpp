@@ -1,48 +1,43 @@
 #pragma once
 
-#include <variant>
 #include <vector>
-#include <tuple>
 
-#include "runtime_op.hpp"
-#include "runtime_processor_wrappers.hpp"
+#include "instrument.hpp"
+#include "patch.hpp"
 
 namespace patch_magic
 {
 
-using runtime_ops_t = std::vector<runtime_op>;
-using float_consts_f_t = std::vector<float>;
-using float_consts_i_t = std::vector<int32_t>;
-using rt_regs_f_t = std::vector<float>;
-using rt_regs_i_t = std::vector<int32_t>;
-struct runtime_data
+using instruments_t = std::vector<instrument>;
+using patches_t = std::vector<patch>;
+
+class runtime
 {
-    runtime_data(uint32_t sample_rate, size_t channel_count, size_t reg_count, size_t const_count);
+public:
+    runtime(size_t max_voice_count_per_instrument, uint32_t sample_rate, size_t channel_count, size_t reg_count_per_voice);
 
-    template<typename State>
-    auto& get_state(size_t idx)
-    {
-        return std::get<std::vector<State>>(states_)[idx];
-    }
+    void reset();
 
-    template<typename State>
-    void add_state()
-    {
-        std::get<std::vector<State>>(states_).emplace_back(State{});
-    }
-
-    void clear();
+    uint32_t sample_rate() const { return sample_rate_; }
+    size_t channel_count() const { return channel_count_; }
     
+    size_t add_patch() { patches_.emplace_back(sample_rate_); return patches_.size() - 1; }
+    const patch& get_patch(size_t idx) const { return patches_[idx]; }
+    patch& get_patch(size_t idx) { return patches_[idx]; }
+    
+    size_t add_instrument(const patch& p) { instruments_.emplace_back(max_voice_count_per_instrument_, reg_count_per_voice_, p); return instruments_.size() - 1; }
+    const instruments_t& get_instruments() const { return instruments_; }
+        
+    void sample(float* data, size_t channel_count);
+    
+private:
+    size_t max_voice_count_per_instrument_;
     uint32_t sample_rate_;
     size_t channel_count_;
-    size_t reg_count_;
-    size_t const_count_;
-    float_consts_f_t constants_f_;
-    float_consts_i_t constants_i_;
-    rt_regs_f_t regs_f_;
-    rt_regs_i_t regs_i_;
-    runtime_processor_states_t states_;
-    runtime_ops_t ops_;
+    size_t reg_count_per_voice_;
+        
+    instruments_t instruments_;
+    patches_t patches_;
 };
    
 }

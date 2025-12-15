@@ -11,10 +11,8 @@
 namespace patch_magic
 {
 
-synth::synth(uint32_t sample_rate, size_t channels, size_t reg_count, size_t const_count):
-    sample_rate_(sample_rate),
-    channels_(channels),
-    runtime_data_(sample_rate, channels, reg_count, const_count)
+synth::synth(size_t max_voice_count_per_instrument, uint32_t sample_rate, size_t channels, size_t reg_count_per_voice):
+    runtime_(max_voice_count_per_instrument, sample_rate, channels, reg_count_per_voice)
 {}
 
 synth::~synth()
@@ -25,17 +23,17 @@ synth::~synth()
 
 void synth::load(const source& src)
 {
-    loader ld(runtime_data_);
+    loader ld(runtime_);
     
-    ld.load(src.ops_);
+    ld.load(src);
 }
 
 void synth::play()
 {
     ma_device_config cfg = ma_device_config_init(ma_device_type_playback);
     cfg.playback.format = ma_format_f32;
-    cfg.playback.channels = static_cast<ma_uint32>(runtime_data_.channel_count_);
-    cfg.sampleRate = static_cast<ma_uint32>(runtime_data_.sample_rate_);
+    cfg.playback.channels = static_cast<ma_uint32>(runtime_.channel_count());
+    cfg.sampleRate = static_cast<ma_uint32>(runtime_.sample_rate());
     cfg.dataCallback = data_callback;
     cfg.pUserData = this;
 
@@ -47,6 +45,7 @@ void synth::play()
         throw std::runtime_error("Failed to init audio");
 
     device_initialized_ = true;
+    
     ma_device_start(&device_);
 }
 
@@ -54,15 +53,23 @@ void synth::data_callback(ma_device* device, void* p_output, const void*, ma_uin
 {
     float* out = static_cast<float*>(p_output);
     auto* self = static_cast<synth*>(device->pUserData);
-    auto& rd = self->runtime_data_;
+    auto& rd = self->runtime_;
     
     for (ma_uint32 f = 0; f < frame_count; ++f)
     {
-        for (const auto& op : rd.ops_)
-            op.process_(rd, op);
-        
-        for (std::size_t ch = 0; ch < rd.channel_count_; ++ch)
-            *out++ = rd.regs_f_[0];
+        rd.sample(self->channel_outputs_.data(), rd.channel_count());
+        for (size_t ch = 0; ch < rd.channel_count(); ++ch)
+            *out++ = self->channel_outputs_[ch];
+    }
+}
+
+void synth::debug_samples(size_t sample_count)
+{
+    for (size_t i = 0; i < sample_count; ++i)
+    {
+        float data[2]; 
+        runtime_.sample(data, 2);
+        std::cout << data[0] << data[1] << "\n";
     }
 }
 
