@@ -37,4 +37,7 @@ struct unique_types_tuple
 template<typename...T>
 using unique_tuple_t = typename unique_types_tuple<T...>::type;
 
+template<class... Ts>
+struct overloaded : Ts... { using Ts::operator()...; };
+
 }

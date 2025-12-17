@@ -4,18 +4,18 @@ namespace patch_magic
 {
     
 voice_slot::voice_slot(size_t reg_count, const patch& p):
-    reg_count_(reg_count), p_(p), active_(false)
-{
-    reset();
-}
-
-void voice_slot::reset()
+    reg_count_(reg_count), p_(p)
 {
     rd_.regs_f_.resize(reg_count_, 0.0f);
     rd_.regs_i_.resize(reg_count_, 0);
     
     rd_.states_ = p_.state_prototypes();
     
+    reset();
+}
+
+void voice_slot::reset()
+{
     std::apply(
         [&](auto&... states)
         {
@@ -24,6 +24,8 @@ void voice_slot::reset()
         }, 
         rd_.states_
     );
+    
+    smoothed_power_ = 0.0f;
 }
 
 float voice_slot::sample()
@@ -31,7 +33,27 @@ float voice_slot::sample()
     for (const auto& op : p_.ops())
         op.process_(rd_, p_.get_runtime_data(), op);
     
-    return rd_.regs_f_[0];
+    float sample = rd_.regs_f_[0];
+    smoothed_power_ = alpha * sample * sample + (1 - alpha) * smoothed_power_;
+    
+    return sample;
+}
+
+void voice_slot::set_active(bool active)
+{
+    if (!rd_.nd_.active_ && active)
+        reset();
+    rd_.nd_.active_ = active;
+}
+
+void voice_slot::set_base_freq(float freq)
+{
+    rd_.nd_.base_freq_ = freq;
+}
+
+float voice_slot::score() const
+{
+    return static_cast<float>(rd_.nd_.active_) * 1000.0 + smoothed_power();
 }
 
 }

@@ -110,7 +110,7 @@ struct invoker_impl<R(*)(State&, Args...) noexcept>
     using arg_tuple = std::tuple<std::decay_t<Args>...>;
     
     template<typename Proc, size_t... I>
-    static auto call(State& s, Proc proc, const arg_tuple& args, std::index_sequence<I...>)
+    static auto call(Proc proc, State& s, const arg_tuple& args, std::index_sequence<I...>)
     {
         return proc(s, std::get<I>(args)...);
     }
@@ -121,7 +121,7 @@ struct invoker_impl<R(*)(State&, Args...) noexcept>
         auto args = load_args(vrd, prd, op, seq, type_seq);
         
         auto& s = vrd.get_state<State>(op.state_idx_).inner_;
-        auto res = call(s, proc, args, op.state_idx_, seq);
+        auto res = call(proc, s, args, op.state_idx_, seq);
         storer<R>::store(vrd, op.store_idx_, res);
     }
 };
@@ -159,7 +159,7 @@ struct invoker_impl<R(*)(State&, sample_rate_wrapper, Args...) noexcept>
     using arg_tuple = std::tuple<std::decay_t<Args>...>;
     
     template<typename Proc, size_t... I>
-    static auto call(State&s, uint32_t sample_rate, Proc proc, const arg_tuple& args, std::index_sequence<I...>)
+    static auto call(Proc proc, State&s, uint32_t sample_rate, const arg_tuple& args, std::index_sequence<I...>)
     {
         return proc(s, sample_rate_wrapper{sample_rate}, std::get<I>(args)...);
     }
@@ -170,7 +170,105 @@ struct invoker_impl<R(*)(State&, sample_rate_wrapper, Args...) noexcept>
         auto args = load_args(vrd, prd, op, seq, type_seq);
         
         auto& s = vrd.get_state<State>(op.state_idx_);
-        auto res = call(s, prd.sample_rate_, proc, args, seq);
+        auto res = call(proc, s, prd.sample_rate_, args, seq);
+        storer<R>::store(vrd, op.store_idx_, res);
+    }
+};
+
+template<typename R, typename... Args>
+struct invoker_impl<R(*)(const note_data&, Args...) noexcept>
+{
+    static constexpr size_t in_arg_count = sizeof...(Args);
+    static constexpr auto seq = std::make_index_sequence<in_arg_count>{};
+    static constexpr auto type_seq = type_sequence<std::decay_t<Args>...>{};
+    using arg_tuple = std::tuple<std::decay_t<Args>...>;
+    
+    template<typename Proc, size_t... I>
+    static R call(Proc proc, const note_data& nd, const arg_tuple& args, std::index_sequence<I...>)
+    {
+        return proc(nd, std::get<I>(args)...);
+    }
+    
+    template<typename Proc>
+    static void invoke(Proc proc, voice_runtime_data& vrd, const patch_runtime_data& prd, const runtime_op& op)
+    {
+        auto args = load_args(vrd, prd, op, seq, type_seq);
+        
+        auto res = call(proc, vrd.nd_, args, seq);
+        storer<R>::store(vrd, op.store_idx_, res);
+    }
+};
+
+template<typename R, typename State, typename... Args>
+struct invoker_impl<R(*)(State&, const note_data&, Args...) noexcept>
+{
+    static constexpr size_t in_arg_count = sizeof...(Args);
+    static constexpr auto seq = std::make_index_sequence<in_arg_count>{};
+    static constexpr auto type_seq = type_sequence<std::decay_t<Args>...>{};
+    using arg_tuple = std::tuple<std::decay_t<Args>...>;
+    
+    template<typename Proc, size_t... I>
+    static auto call(Proc proc, State& s, const note_data& nd, const arg_tuple& args, std::index_sequence<I...>)
+    {
+        return proc(s, nd, std::get<I>(args)...);
+    }
+    
+    template<typename Proc>
+    static void invoke(Proc proc, voice_runtime_data& vrd, const patch_runtime_data& prd, const runtime_op& op)
+    {
+        auto args = load_args(vrd, prd, op, seq, type_seq);
+        
+        auto& s = vrd.get_state<State>(op.state_idx_).inner_;
+        auto res = call(proc, s, vrd.nd_, args, op.state_idx_, seq);
+        storer<R>::store(vrd, op.store_idx_, res);
+    }
+};
+
+template<typename R, typename... Args>
+struct invoker_impl<R(*)(sample_rate_wrapper, const note_data&, Args...) noexcept>
+{
+    static constexpr size_t in_arg_count = sizeof...(Args);
+    static constexpr auto seq = std::make_index_sequence<in_arg_count>{};
+    static constexpr auto type_seq = type_sequence<std::decay_t<Args>...>{};
+    using arg_tuple = std::tuple<std::decay_t<Args>...>;
+    
+    template<typename Proc, size_t... I>
+    static auto call(Proc proc, uint32_t sample_rate, const note_data& nd, const arg_tuple& args, std::index_sequence<I...>)
+    {
+        return proc(sample_rate_wrapper{sample_rate}, nd, std::get<I>(args)...);
+    }
+    
+    template<typename Proc>
+    static void invoke(Proc proc, voice_runtime_data& vrd, const patch_runtime_data& prd, const runtime_op& op)
+    {
+        auto args = load_args(vrd, prd, op, seq, type_seq);
+                
+        auto res = call(proc, prd.sample_rate_, vrd.nd_, args, seq);
+        storer<R>::store(vrd, op.store_idx_, res);
+    }
+};
+
+template<typename R, typename State, typename... Args>
+struct invoker_impl<R(*)(State&, sample_rate_wrapper, const note_data&, Args...) noexcept>
+{
+    static constexpr size_t in_arg_count = sizeof...(Args);
+    static constexpr auto seq = std::make_index_sequence<in_arg_count>{};
+    static constexpr auto type_seq = type_sequence<std::decay_t<Args>...>{};
+    using arg_tuple = std::tuple<std::decay_t<Args>...>;
+    
+    template<typename Proc, size_t... I>
+    static auto call(Proc proc, State&s, uint32_t sample_rate, const note_data& nd, const arg_tuple& args, std::index_sequence<I...>)
+    {
+        return proc(s, sample_rate_wrapper{sample_rate}, nd, std::get<I>(args)...);
+    }
+    
+    template<typename Proc>
+    static void invoke(Proc proc, voice_runtime_data& vrd, const patch_runtime_data& prd, const runtime_op& op)
+    {
+        auto args = load_args(vrd, prd, op, seq, type_seq);
+        
+        auto& s = vrd.get_state<State>(op.state_idx_);
+        auto res = call(proc, s, prd.sample_rate_, vrd.nd_, args, seq);
         storer<R>::store(vrd, op.store_idx_, res);
     }
 };

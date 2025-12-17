@@ -17,11 +17,16 @@ void runtime::reset()
 {
     for (auto& instr : instruments_)
         instr.reset();
+    for (auto& t : timelines_)
+        t.reset();
 }
 
 void runtime::sample(float* data, size_t channel_count)
 {
     float sum = 0.0f;
+    
+    for (auto& t : timelines_)
+        t.prepare_events();
     
     for (auto& instr : instruments_)
     {
@@ -29,8 +34,13 @@ void runtime::sample(float* data, size_t channel_count)
     }
     
     float gain = polyphony_gain(instruments_.size(), polyphony_scale::equal_amplitude);
+    float sample = sum * gain;
+     
     for (size_t i = 0; i < channel_count; ++i)
-        data[i] = sum * gain;
+        data[i] = sample;
+        
+    for (auto& t : timelines_)
+        t.inc();
 }
 
 }

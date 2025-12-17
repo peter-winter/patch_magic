@@ -10,6 +10,8 @@ namespace patch_magic
 using rt_regs_f_t = std::vector<float>;
 using rt_regs_i_t = std::vector<int32_t>;
 
+constexpr static float inaudible_amplitude = 1.0e-7;
+
 struct voice_runtime_data
 {
     float get_reg_f(size_t idx) const { return regs_f_[idx]; }
@@ -37,12 +39,25 @@ public:
             
     float sample();
     void reset();
+
+    void set_active(bool active);
+    void set_base_freq(float freq);
     
-private:
+    uint32_t note_id() const { return note_id_; }
+    void set_note_id(uint32_t note_id) { note_id_ = note_id; }
+    
+    float smoothed_power() const { return smoothed_power_; }
+    bool active() const { return rd_.nd_.active_; }
+    float score() const;
+    
+private:    
+    constexpr static float alpha = 0.01f;
+    
     size_t reg_count_;
     const patch& p_;
     voice_runtime_data rd_;
-    bool active_;
+    float smoothed_power_;
+    uint32_t note_id_;
 };
 
 }

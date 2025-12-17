@@ -40,11 +40,12 @@ public:
     void add_op(runtime_op op) { ops_.emplace_back(op); }
     
     template<typename State>
-    void add_state_prototype()
+    size_t add_state_prototype()
     {
         auto& prototypes = std::get<std::vector<State>>(state_prototypes_);
         prototypes.emplace_back(State{});
         prototypes.back().reset();
+        return prototypes.size() - 1;
     }
     
     const auto& state_prototypes() const { return state_prototypes_; }

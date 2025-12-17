@@ -6,34 +6,25 @@
 #include <ranges>
 #include <algorithm>
 
+#include "math.hpp"
+
 namespace patch_magic
 {
     
 using sample_index = uint64_t;
-using note_id      = int32_t;
 
-struct note_on
+enum class event_type { sound_on, sound_off, note_on, note_off };
+
+struct event
 {
-    note_id id_; 
-    float f_;
+    event(event_type type, uint32_t id, float freq = inaudible_freq)
+        : type_(type), id_(id), freq_(freq)
+    {}
+    
+    event_type type_;
+    uint32_t id_;
+    float freq_;
 };
-
-struct note_off
-{
-    note_id id_;
-};
-
-struct sound_on
-{
-    note_id id_;
-};
-
-struct sound_off
-{
-    note_id id_;
-};
-
-using event = std::variant<note_on, note_off, sound_on, sound_off>;
 
 class timeline
 {
@@ -49,10 +40,10 @@ public:
         event        payload;
     };
 
-    void note_on_at(sample_index when, note_id id, float freq);
-    void note_off_at(sample_index when, note_id id);
-    void sound_on_at(sample_index when, note_id id);
-    void sound_off_at(sample_index when, note_id id);
+    void note_on_at(sample_index when, uint32_t id, float freq);
+    void note_off_at(sample_index when, uint32_t id);
+    void sound_on_at(sample_index when, uint32_t id);
+    void sound_off_at(sample_index when, uint32_t id);
     
     using events_view = std::ranges::subrange<std::vector<timed_event>::const_iterator>;
         

@@ -3,24 +3,24 @@
 namespace patch_magic
 {
     
-void timeline::note_on_at(sample_index when, note_id id, float freq)
+void timeline::note_on_at(sample_index when, uint32_t id, float freq)
 {
-    insert(timed_event{when, note_on{id, freq}});
+    insert(timed_event{when, event(event_type::note_on, id, freq)});
 }
 
-void timeline::note_off_at(sample_index when, note_id id)
+void timeline::note_off_at(sample_index when, uint32_t id)
 {
-    insert(timed_event{when, note_off{id}});
+    insert(timed_event{when, event(event_type::note_off, id)});
 }
 
-void timeline::sound_on_at(sample_index when, note_id id)
+void timeline::sound_on_at(sample_index when, uint32_t id)
 {
-    insert(timed_event{when, sound_on{id}});
+    insert(timed_event{when, event(event_type::sound_on, id)});
 }
 
-void timeline::sound_off_at(sample_index when, note_id id)
+void timeline::sound_off_at(sample_index when, uint32_t id)
 {
-    insert(timed_event{when, sound_off{id}});
+    insert(timed_event{when, event(event_type::sound_off, id)});
 }
 
 void timeline::inc()

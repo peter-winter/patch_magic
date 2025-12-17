@@ -33,10 +33,24 @@ struct op_source
     in_args_source_array_t ins_;
 };
 
+struct sound_on_source { uint32_t id_; };
+struct sound_off_source { uint32_t id_; };
+struct note_on_source { uint32_t id_; float freq_; };
+struct note_off_source { uint32_t id_; };
+
+using timed_event_arg = std::variant<sound_on_source, sound_off_source>;
+
+struct timed_event_source
+{
+    float time_point_;
+    timed_event_arg ev_;
+};
+
 struct instrument_source
 {
     std::string name_;
     std::string patch_name_;
+    std::string timeline_name_;
 };
 
 struct patch_source
@@ -45,10 +59,17 @@ struct patch_source
     std::vector<op_source> ops_;
 };
 
+struct timeline_source
+{
+    std::string name_;
+    std::vector<timed_event_source> events_;
+};
+
 struct source
 {
     std::vector<patch_source> patches_;
     std::vector<instrument_source> instruments_;
+    std::vector<timeline_source> timelines_;
 };
 
 }

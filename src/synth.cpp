@@ -30,6 +30,8 @@ void synth::load(const source& src)
 
 void synth::play()
 {
+    runtime_.reset();
+    
     ma_device_config cfg = ma_device_config_init(ma_device_type_playback);
     cfg.playback.format = ma_format_f32;
     cfg.playback.channels = static_cast<ma_uint32>(runtime_.channel_count());
@@ -53,18 +55,20 @@ void synth::data_callback(ma_device* device, void* p_output, const void*, ma_uin
 {
     float* out = static_cast<float*>(p_output);
     auto* self = static_cast<synth*>(device->pUserData);
-    auto& rd = self->runtime_;
+    auto& r = self->runtime_;
     
     for (ma_uint32 f = 0; f < frame_count; ++f)
     {
-        rd.sample(self->channel_outputs_.data(), rd.channel_count());
-        for (size_t ch = 0; ch < rd.channel_count(); ++ch)
+        r.sample(self->channel_outputs_.data(), r.channel_count());
+        for (size_t ch = 0; ch < r.channel_count(); ++ch)
             *out++ = self->channel_outputs_[ch];
     }
 }
 
 void synth::debug_samples(size_t sample_count)
 {
+    runtime_.reset();
+    
     for (size_t i = 0; i < sample_count; ++i)
     {
         float data[2]; 
