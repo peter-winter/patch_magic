@@ -10,6 +10,7 @@ struct sample_rate_wrapper
 #include "runtime_processors/generators.hpp"
 #include "runtime_processors/various.hpp"
 #include "runtime_processors/envelope.hpp"
+#include "runtime_processors/base_freq.hpp"
 
 namespace patch_magic
 {

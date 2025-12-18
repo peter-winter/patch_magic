@@ -86,7 +86,7 @@ struct runtime_processor_wrapper
 constexpr runtime_processor_wrapper<calc_sine> sine;
 constexpr runtime_processor_wrapper<calc_vol> vol;
 constexpr runtime_processor_wrapper<calc_env_ar> env_ar;
-
+constexpr runtime_processor_wrapper<calc_base_freq> base_freq;
 
 template<auto... RuntimeProcessors>
 struct runtime_processor_wrapper_variant
@@ -111,7 +111,8 @@ struct runtime_processor_states<std::variant<T...>>
 using runtime_processor_wrapper_variant_t = typename runtime_processor_wrapper_variant<
     sine, 
     vol,
-    env_ar
+    env_ar,
+    base_freq
 >::type;
 
 using runtime_processor_states_t = typename runtime_processor_states<runtime_processor_wrapper_variant_t>::type;

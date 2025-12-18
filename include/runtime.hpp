@@ -28,6 +28,7 @@ public:
     
     uint32_t sample_rate() const { return sample_rate_; }
     size_t channel_count() const { return channel_count_; }
+    size_t reg_count_per_voice() const { return reg_count_per_voice_; }
     
     size_t add_patch() { patches_.emplace_back(sample_rate_); return patches_.size() - 1; }
     const patch& get_patch(size_t idx) const { return patches_[idx]; }

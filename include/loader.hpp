@@ -109,6 +109,8 @@ private:
         runtime_op op;
         op.process_ = invoker<Wrapper::proc>::invoke;
         op.state_idx_ = state_idx;
+        if (out_idx >= r_.reg_count_per_voice())
+            throw std::invalid_argument("Invalid output register index");
         op.store_idx_ = out_idx;
         bind_ins(ins, op, p, std::make_index_sequence<Wrapper::in_arg_count>{});
         return op;
@@ -125,9 +127,19 @@ private:
             return p.add_const_i(std::get<const_i_source>(i).v_);
         }
         else if (std::holds_alternative<reg_f_source>(i))
-            return std::get<reg_f_source>(i).idx_;
+        {
+            size_t idx = std::get<reg_f_source>(i).idx_;
+            if (idx >= r_.reg_count_per_voice())
+                throw std::invalid_argument("Invalid float register index");
+            return idx;
+        }
         else
-            return std::get<reg_i_source>(i).idx_;
+        {
+            size_t idx = std::get<reg_i_source>(i).idx_;
+            if (idx >= r_.reg_count_per_voice())
+                throw std::invalid_argument("Invalid int register index");
+            return idx;
+        }
     }
     
     template<size_t I>

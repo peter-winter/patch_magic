@@ -38,7 +38,7 @@ struct sound_off_source { uint32_t id_; };
 struct note_on_source { uint32_t id_; float freq_; };
 struct note_off_source { uint32_t id_; };
 
-using timed_event_arg = std::variant<sound_on_source, sound_off_source>;
+using timed_event_arg = std::variant<sound_on_source, sound_off_source, note_on_source, note_off_source>;
 
 struct timed_event_source
 {
