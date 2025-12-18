@@ -5,7 +5,9 @@
 #include <unordered_map>
 #include <functional>
 #include <cctype>
+#include <thread>
 
+#include <synth.hpp>
 
 using ExampleMap = std::unordered_map<std::string, int (*)()>;
 

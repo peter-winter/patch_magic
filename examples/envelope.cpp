@@ -1,6 +1,3 @@
-#include <synth.hpp>
-#include <iostream>
-
 #include "main.h"
 
 using namespace patch_magic;
@@ -9,7 +6,7 @@ int envelope()
 {
     try
     {
-        std::cout << "=== Envelopes test ===\n";
+        std::cout << "=== Envelopes test, 0.5s attack, 5s release. Looping sounds ===\n";
         
         synth s;
         
@@ -36,7 +33,9 @@ int envelope()
                     {7.0f, sound_off_source{2}},
                     {9.0f, sound_on_source{3}},
                     {11.0f, sound_off_source{3}}
-                }
+                },
+                12.0f,
+                true
             }
         };
         
@@ -46,13 +45,17 @@ int envelope()
         
         s.load(src);
         
-        std::cout << "press Enter to play and stop\n";
+        std::cout << "press Enter to play\n";
         std::cin.get();
         
         s.set_debug_callback(print_debug);
         
         s.play();
-        std::cin.get();
+        
+        while (s.is_running())
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
     }
     catch (const std::exception& e)
     {

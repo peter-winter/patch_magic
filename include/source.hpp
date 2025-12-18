@@ -63,6 +63,8 @@ struct timeline_source
 {
     std::string name_;
     std::vector<timed_event_source> events_;
+    float duration_seconds_;
+    bool looping_ = false;
 };
 
 struct source

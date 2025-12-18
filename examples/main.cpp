@@ -41,6 +41,5 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    std::cout << "Running: " << it->first << "\n";
     return it->second();
 }

@@ -23,6 +23,16 @@ void runtime::reset()
         t.reset();
 }
 
+bool runtime::active() const
+{
+    for (const auto& t : timelines_)
+    {
+        if (t.active())
+            return true;
+    }
+    return false;
+}
+
 void runtime::sample(float* data, size_t channel_count)
 {
     float sum = 0.0f;

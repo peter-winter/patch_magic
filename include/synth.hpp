@@ -20,6 +20,7 @@ public:
 
     void load(const source& src);
     void play();
+    bool is_running() const;
     
     void set_debug_callback(debug_callback cb);
 

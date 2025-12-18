@@ -178,7 +178,7 @@ const std::string& instrument::get_display_line()
         .append(" aud, ")
         .append(std::to_string(free_count_))
         .append(" free |")
-        .append(" unordered samples: ")
+        .append(" unordered count: ")
         .append(std::to_string(unordered_samples_total_))
         .append(" |     ");
               

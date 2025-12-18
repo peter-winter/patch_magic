@@ -22,6 +22,8 @@ public:
 
     void reset();
 
+    bool active() const;
+    
     void set_debug_callback(debug_callback cb) { debug_callback_ = cb; }
     
     uint32_t sample_rate() const { return sample_rate_; }
@@ -34,7 +36,7 @@ public:
     size_t add_instrument(std::string name, const patch& p, timeline& t) { instruments_.emplace_back(name, max_voice_count_per_instrument_, reg_count_per_voice_, p, t); return instruments_.size() - 1; }
     const instruments_t& get_instruments() const { return instruments_; }
         
-    size_t add_timeline() { timelines_.emplace_back(); return timelines_.size() - 1; }
+    size_t add_timeline(sample_index duration_samples, bool looping) { timelines_.emplace_back(duration_samples, looping); return timelines_.size() - 1; }
     const timeline& get_timeline(size_t idx) const { return timelines_[idx]; }
     timeline& get_timeline(size_t idx) { return timelines_[idx]; }
     

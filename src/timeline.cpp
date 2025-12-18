@@ -3,6 +3,10 @@
 namespace patch_magic
 {
     
+timeline::timeline(sample_index duration_samples, bool looping):
+    duration_samples_(duration_samples), looping_(looping), active_(true)
+{}
+
 void timeline::note_on_at(sample_index when, uint32_t id, float freq)
 {
     insert(timed_event{when, event(event_type::note_on, id, freq)});
@@ -26,6 +30,19 @@ void timeline::sound_off_at(sample_index when, uint32_t id)
 void timeline::inc()
 {
     ++current_sample_;
+
+    if (current_sample_ >= duration_samples_)
+    {
+        if (looping_)
+        {
+            current_sample_ = 0;
+            next_event_it_ = events_.begin();
+        }
+        else
+        {
+            active_ = false;
+        }
+    }
 }
 
 void timeline::prepare_events()
@@ -53,6 +70,7 @@ void timeline::reset()
 {
     current_sample_ = 0;
     next_event_it_ = events_.begin();
+    active_ = true;
 }
 
 void timeline::insert(const timed_event& te)

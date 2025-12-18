@@ -29,10 +29,14 @@ struct event
 class timeline
 {
 public:
-    timeline() = default;
+    timeline(sample_index duration_samples, bool looping);
+    
     timeline(timeline&&) = default;
     timeline(const timeline&) = delete;
     timeline& operator = (const timeline&) = delete;
+    
+    bool active() const { return active_; }
+    bool looping() const { return looping_; }
     
     struct timed_event
     {
@@ -58,6 +62,10 @@ public:
     
 private:
     void insert(const timed_event& te);
+    
+    sample_index duration_samples_;
+    bool looping_{false};
+    bool active_{true};
     
     std::vector<timed_event> events_;
     sample_index current_sample_{0};

@@ -1,6 +1,3 @@
-#include <synth.hpp>
-#include <iostream>
-
 #include "main.h"
 
 using namespace patch_magic;
@@ -9,7 +6,7 @@ int sine_440_220_mixed()
 {
     try
     {
-        std::cout << "=== 440 and 220 Hz sine waves mixed ===\n";
+        std::cout << "=== 440 and 220 Hz sine waves mixed, 10 seconds playback ===\n";
         
         synth s;
         
@@ -37,7 +34,9 @@ int sine_440_220_mixed()
                 "t1",
                 {
                     {1.0f, sound_on_source{1}}
-                }
+                },
+                10.0f,  // duration
+                false   // looping
             }
         };
         
@@ -47,13 +46,16 @@ int sine_440_220_mixed()
         
         s.load(src);
         
-        std::cout << "press Enter to play and stop\n";
+        std::cout << "Press Enter to play\n";
         std::cin.get();
         
         s.set_debug_callback(print_debug);
         
         s.play();
-        std::cin.get();
+        while (s.is_running())
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
     }
     catch (const std::exception& e)
     {

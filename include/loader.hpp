@@ -53,7 +53,9 @@ private:
     
     void load_timeline(const timeline_source& src_t)
     {
-        size_t timeline_idx = r_.add_timeline();
+        sample_index duration_samples = static_cast<sample_index>(static_cast<double>(r_.sample_rate()) * src_t.duration_seconds_);
+        
+        size_t timeline_idx = r_.add_timeline(duration_samples, src_t.looping_);
         timeline_map_[src_t.name_] = timeline_idx;
         
         load_timeline_events(src_t.events_, r_.get_timeline(timeline_idx));
