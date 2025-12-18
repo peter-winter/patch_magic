@@ -12,6 +12,8 @@ using rt_regs_i_t = std::vector<int32_t>;
 
 constexpr static float inaudible_amplitude = 1.0e-7;
 
+enum class voice_slot_state { free, active, releasing };
+
 struct voice_runtime_data
 {
     float get_reg_f(size_t idx) const { return regs_f_[idx]; }
@@ -23,15 +25,16 @@ struct voice_runtime_data
     template<typename State>
     auto& get_state(size_t idx)
     {
-        return std::get<std::vector<State>>(states_)[idx];
+        return std::get<std::vector<State>>(processor_states_)[idx];
     }
     
     rt_regs_f_t regs_f_;
     rt_regs_i_t regs_i_;
-    runtime_processor_states_t states_;
+    runtime_processor_states_t processor_states_;
+    voice_slot_state state_;
     note_data nd_;
 };
-    
+
 class voice_slot
 {
 public:
@@ -40,14 +43,14 @@ public:
     float sample();
     void reset();
 
-    void set_active(bool active);
     void set_base_freq(float freq);
     
     uint32_t note_id() const { return note_id_; }
     void set_note_id(uint32_t note_id) { note_id_ = note_id; }
     
     float smoothed_power() const { return smoothed_power_; }
-    bool active() const { return rd_.nd_.active_; }
+    voice_slot_state state() const { return rd_.state_; }
+    void set_state(voice_slot_state state);
     float score() const;
     
 private:    

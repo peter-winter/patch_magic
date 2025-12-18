@@ -23,3 +23,10 @@ inline ExampleMap& get_examples()
         } \
     }; \
     static name##_registrar name##_registrar_instance
+
+
+inline void print_debug(const char* str)
+{
+    std::cout << str;
+    std::cout.flush();
+}

@@ -8,9 +8,11 @@ runtime::runtime(size_t max_voice_count_per_instrument, uint32_t sample_rate, si
     max_voice_count_per_instrument_(max_voice_count_per_instrument),
     sample_rate_(sample_rate),
     channel_count_(channel_count),
-    reg_count_per_voice_(reg_count_per_voice)
+    reg_count_per_voice_(reg_count_per_voice),
+    debug_callback_(nullptr)
 {
     reset();
+    debug_str_.reserve(1 << 16);
 }
 
 void runtime::reset()
@@ -32,7 +34,7 @@ void runtime::sample(float* data, size_t channel_count)
     {
         sum += instr.sample();
     }
-    
+        
     float gain = polyphony_gain(instruments_.size(), polyphony_scale::equal_amplitude);
     float sample = sum * gain;
      
@@ -41,6 +43,26 @@ void runtime::sample(float* data, size_t channel_count)
         
     for (auto& t : timelines_)
         t.inc();
+        
+    debug();
+}
+
+void runtime::debug()
+{
+    if (debug_callback_)
+    {        
+        debug_str_.clear();
+        
+        for (auto& instr : instruments_)
+        {
+            debug_str_.append(instr.get_display_line());
+            debug_str_.append("\n");
+        }
+        
+        debug_str_.append("\033[").append(std::to_string(instruments_.size())).append("A");
+        
+        debug_callback_(debug_str_.data());
+    }
 }
 
 }

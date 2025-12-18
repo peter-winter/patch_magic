@@ -15,6 +15,11 @@ synth::synth(size_t max_voice_count_per_instrument, uint32_t sample_rate, size_t
     runtime_(max_voice_count_per_instrument, sample_rate, channels, reg_count_per_voice)
 {}
 
+void synth::set_debug_callback(debug_callback cb)
+{
+    runtime_.set_debug_callback(cb);
+}
+
 synth::~synth()
 {
     if (device_initialized_)
@@ -65,16 +70,5 @@ void synth::data_callback(ma_device* device, void* p_output, const void*, ma_uin
     }
 }
 
-void synth::debug_samples(size_t sample_count)
-{
-    runtime_.reset();
-    
-    for (size_t i = 0; i < sample_count; ++i)
-    {
-        float data[2]; 
-        runtime_.sample(data, 2);
-        std::cout << data[0] << data[1] << "\n";
-    }
-}
 
 }

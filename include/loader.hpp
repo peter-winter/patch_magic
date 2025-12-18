@@ -40,7 +40,7 @@ private:
         auto timeline_it = timeline_map_.find(src_i.timeline_name_);
         if (timeline_it == timeline_map_.end())
             throw std::invalid_argument("Unknown timeline");
-        r_.add_instrument(r_.get_patch(patch_it->second), r_.get_timeline(timeline_it->second));
+        r_.add_instrument(src_i.name_, r_.get_patch(patch_it->second), r_.get_timeline(timeline_it->second));
     }
     
     void load_patch(const patch_source& src_p)

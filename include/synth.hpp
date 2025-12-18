@@ -21,7 +21,7 @@ public:
     void load(const source& src);
     void play();
     
-    void debug_samples(size_t sample_count);
+    void set_debug_callback(debug_callback cb);
 
 private:    
     static inline void data_callback(ma_device* device, void* p_output, const void*, ma_uint32 frame_count);

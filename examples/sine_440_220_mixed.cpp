@@ -47,12 +47,12 @@ int sine_440_220_mixed()
         
         s.load(src);
         
-        std::cout << "press Enter to play...\n";
+        std::cout << "press Enter to play and stop\n";
         std::cin.get();
         
-        s.play();
+        s.set_debug_callback(print_debug);
         
-        std::cout << "press Enter to stop...\n";
+        s.play();
         std::cin.get();
     }
     catch (const std::exception& e)

@@ -13,6 +13,8 @@ using instruments_t = std::vector<instrument>;
 using patches_t = std::vector<patch>;
 using timelines_t = std::vector<timeline>;
 
+using debug_callback = void(*)(const char*);
+
 class runtime
 {
 public:
@@ -20,6 +22,8 @@ public:
 
     void reset();
 
+    void set_debug_callback(debug_callback cb) { debug_callback_ = cb; }
+    
     uint32_t sample_rate() const { return sample_rate_; }
     size_t channel_count() const { return channel_count_; }
     
@@ -27,7 +31,7 @@ public:
     const patch& get_patch(size_t idx) const { return patches_[idx]; }
     patch& get_patch(size_t idx) { return patches_[idx]; }
     
-    size_t add_instrument(const patch& p, timeline& t) { instruments_.emplace_back(max_voice_count_per_instrument_, reg_count_per_voice_, p, t); return instruments_.size() - 1; }
+    size_t add_instrument(std::string name, const patch& p, timeline& t) { instruments_.emplace_back(name, max_voice_count_per_instrument_, reg_count_per_voice_, p, t); return instruments_.size() - 1; }
     const instruments_t& get_instruments() const { return instruments_; }
         
     size_t add_timeline() { timelines_.emplace_back(); return timelines_.size() - 1; }
@@ -37,14 +41,19 @@ public:
     void sample(float* data, size_t channel_count);
     
 private:
+    void debug();
+    
     size_t max_voice_count_per_instrument_;
     uint32_t sample_rate_;
     size_t channel_count_;
     size_t reg_count_per_voice_;
-        
+    
     instruments_t instruments_;
     patches_t patches_;
     timelines_t timelines_;
+    
+    debug_callback debug_callback_;
+    std::string debug_str_;
 };
    
 }

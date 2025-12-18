@@ -9,7 +9,7 @@ voice_slot::voice_slot(size_t reg_count, const patch& p):
     rd_.regs_f_.resize(reg_count_, 0.0f);
     rd_.regs_i_.resize(reg_count_, 0);
     
-    rd_.states_ = p_.state_prototypes();
+    rd_.processor_states_ = p_.state_prototypes();
     
     reset();
 }
@@ -22,7 +22,7 @@ void voice_slot::reset()
             auto reset_states = [](auto& state_vector){ for (auto& s : state_vector){ s.reset(); } };
             (reset_states(states), ...);
         }, 
-        rd_.states_
+        rd_.processor_states_
     );
     
     smoothed_power_ = 0.0f;
@@ -39,11 +39,13 @@ float voice_slot::sample()
     return sample;
 }
 
-void voice_slot::set_active(bool active)
+void voice_slot::set_state(voice_slot_state state)
 {
-    if (!rd_.nd_.active_ && active)
+    if (rd_.state_ != voice_slot_state::active && state == voice_slot_state::active)
         reset();
-    rd_.nd_.active_ = active;
+    rd_.state_ = state;
+    
+    rd_.nd_.active_ = (rd_.state_ == voice_slot_state::active);
 }
 
 void voice_slot::set_base_freq(float freq)
