@@ -2,13 +2,15 @@
 #include "polyphony.hpp"
 
 #include <numeric>
+#include <sstream>
+#include <iomanip>
 
 namespace patch_magic
 {
 
-instrument::instrument(std::string name, size_t max_voice_count, size_t reg_count, const patch& p, timeline& t):
+instrument::instrument(std::string name, size_t max_voice_count, size_t reg_count, const patch& p, const sequence& seq):
     name_(name),
-    max_voice_count_(max_voice_count), reg_count_(reg_count), p_(p), t_(t), 
+    max_voice_count_(max_voice_count), reg_count_(reg_count), p_(p), seq_(seq), 
     read_order_idx_(0), write_order_idx_(1), audible_count_(0), free_count_(max_voice_count),
     unordered_samples_total_(0)
 {
@@ -145,43 +147,47 @@ float instrument::sample()
     audible_count_ = write_idx;
     std::swap(read_order_idx_, write_order_idx_);
     
+    gen_.inc();
+    
     return sum;
 }
 
 const std::string& instrument::get_display_line()
 {
     display_line_.clear();
-    
-    display_line_.append("Instrument: ").append(name_).append(" |");
+
+    std::ostringstream oss;
+    oss << "Instrument: " << name_ << " |";
 
     for (const auto& s : voice_slots_)
     {
         switch (s.state())
         {
             case voice_slot_state::active:
-                display_line_.append("■");
+                oss << "■";
                 break;
             case voice_slot_state::free:
-                display_line_.append(" ");
+                oss << " ";
                 break;
             case voice_slot_state::releasing:
-                display_line_.append("●");
+                oss << "●";
                 break;
         }
     }
 
-    display_line_
-        .append("| ")
-        .append(std::to_string(audible_count_))
-        .append("/")
-        .append(std::to_string(max_voice_count_))
-        .append(" aud, ")
-        .append(std::to_string(free_count_))
-        .append(" free |")
-        .append(" unordered count: ")
-        .append(std::to_string(unordered_samples_total_))
-        .append(" |     ");
-              
+    oss << "| "
+        << std::setw(4) << std::setfill('0') << audible_count_
+        << "/"
+        << std::setw(4) << std::setfill('0') << max_voice_count_
+        << " aud, "
+        << std::setw(4) << std::setfill('0') << free_count_
+        << " free |"
+        << " unordered: "
+        << std::setw(8) << std::setfill('0') << unordered_samples_total_
+        << " |";
+
+    display_line_ = oss.str();
+
     return display_line_;
 }
 
