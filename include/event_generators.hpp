@@ -26,14 +26,6 @@ struct event
 
 using events = std::vector<event>;
 
-using freq_generator = float (*)(int);
-
-struct event_id_generator
-{
-    uint32_t generate() { return ++current_id_; }
-    uint32_t current_id_{0};
-};
-
 struct time_tracker
 {
     time_tracker(uint32_t sample_rate, float duration):
@@ -50,7 +42,7 @@ struct time_tracker
 class base_event_generator
 {
 public:
-    base_event_generator(uint32_t sample_rate, float duration, float on_duration, freq_generator fg, event_id_generator& eidg);
+    base_event_generator(uint32_t sample_rate, float duration, event_id_generator& eidg);
     
     bool inc();
     bool done() const { return done_; }
@@ -58,21 +50,21 @@ public:
 protected:
     time_tracker tt_;
     bool done_;
-    float on_duration_;
-    freq_generator fg_;
     event_id_generator& eidg_;
 };
 
 class simple_event_generator : public base_event_generator
 {
 public:
-    simple_event_generator(uint32_t sample_rate, float duration, float on_duration, const simple& s, freq_generator fg, event_id_generator& eidg);
+    simple_event_generator(uint32_t sample_rate, float duration, const simple_note& s, event_id_generator& eidg);
     
     void inc();
-    void generate_events(events& es);
+    void generate_events(events& es, float on_duration);
+    
+    size_t get_max_simultaneous_events_count() const { return 1; }
     
 private:
-    const simple& s_;
+    float freq_;
     uint32_t on_event_fired_;
     bool off_event_fired_;
 };
@@ -80,13 +72,15 @@ private:
 class parallel_event_generator : public base_event_generator
 {
 public:
-    parallel_event_generator(uint32_t sample_rate, float duration, float on_duration, const parallel& p, freq_generator fg, event_id_generator& eidg);
+    parallel_event_generator(uint32_t sample_rate, float duration, const parallel_note& p, event_id_generator& eidg);
     
     void inc();
-    void generate_events(events&  es);
+    void generate_events(events& es, float on_duration);
+    
+    size_t get_max_simultaneous_events_count() const { return ns_.size(); }
     
 private:
-    const parallel& p_;
+    std::vector<float> freqs_;
     std::vector<uint32_t> on_events_fired_;
     bool off_events_fired_;
 };
@@ -98,15 +92,16 @@ using item_event_generators = std::vector<item_event_generator_wrapper>;
 class seq_event_generator
 {
 public:
-    seq_event_generator(uint32_t sample_rate, float duration, float on_duration, const sequence& seq, freq_generator fg, event_id_generator& eidg);
+    seq_event_generator(uint32_t sample_rate, float duration, const note_sequence& seq event_id_generator& eidg);
     
-    void generate_events(events& es);
+    void generate_events(events& es, float on_duration);
     void inc();
     bool done() const;
+    size_t get_max_simultaneous_events_count() const;
 
 private:
-    item_event_generators create_item_generators(uint32_t sample_rate, float duration, float on_duration, const sequence& seq, freq_generator fg, event_id_generator& eidg);    
-    item_event_generator_wrapper create_item_generator(uint32_t sample_rate, float item_duration, float on_duration, const item& it, freq_generator fg, event_id_generator& eidg);
+    item_event_generators create_item_generators(uint32_t sample_rate, float duration, const note_sequence& seq, event_id_generator& eidg);    
+    item_event_generator_wrapper create_item_generator(uint32_t sample_rate, float duration, const item& it, event_id_generator& eidg);
     
     time_tracker item_tt_;
     size_t current_item_idx_;

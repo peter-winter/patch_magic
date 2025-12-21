@@ -4,15 +4,25 @@
 
 #include "instrument.hpp"
 #include "patch.hpp"
+#include "sequences.hpp"
+#include "event_generators.hpp"
 
 namespace patch_magic
 {
 
 using instruments_t = std::vector<instrument>;
 using patches_t = std::vector<patch>;
-using sequences_t = std::vector<sequence>;
+using event_generators_t = std::vector<seq_event_generator>;
 
 using debug_callback = void(*)(const char*);
+
+constexpr float default_top_sequence_duration = 4.0f;
+
+struct event_id_generator
+{
+    uint32_t generate() { return ++current_id_; }
+    uint32_t current_id_{0};
+};
 
 class runtime
 {
@@ -25,22 +35,26 @@ public:
     
     void set_debug_callback(debug_callback cb) { debug_callback_ = cb; }
     
+    void set_top_sequence_duration(float duration) { top_sequence_duration_ = duration; }
     uint32_t sample_rate() const { return sample_rate_; }
     size_t channel_count() const { return channel_count_; }
     size_t reg_count_per_voice() const { return reg_count_per_voice_; }
     
-    size_t add_patch() { patches_.emplace_back(sample_rate_); return patches_.size() - 1; }
-    const patch& get_patch(size_t idx) const { return patches_[idx]; }
-    patch& get_patch(size_t idx) { return patches_[idx]; }
+    size_t add_patch();
+    const patch& get_patch(size_t idx) const;
+    patch& get_patch(size_t idx);
     
-    size_t add_instrument(std::string name, const patch& p, const timeline& t) { instruments_.emplace_back(name, max_voice_count_per_instrument_, reg_count_per_voice_, p, t); return instruments_.size() - 1; }
-    const instruments_t& get_instruments() const { return instruments_; }
+    size_t add_event_generator(const sequences::note_sequence& note_seq);    
+    const seq_event_generator& get_event_generator(size_t idx) const;
     
+    size_t add_instrument(std::string name, const patch& p, const seq_event_generator& gen, float on_duration);
+        
     void sample(float* data, size_t channel_count);
     
 private:
     void debug();
     
+    float top_sequence_duration_;
     size_t max_voice_count_per_instrument_;
     uint32_t sample_rate_;
     size_t channel_count_;
@@ -48,7 +62,10 @@ private:
     
     instruments_t instruments_;
     patches_t patches_;
-        
+    event_generators_t event_generators_;
+            
+    event_id_generator eidg_;
+    
     debug_callback debug_callback_;
     std::string debug_str_;
 };

@@ -1,44 +1,136 @@
 #pragma once
 
+#include <cstdint>
+#include <utility>
+#include <array>
+
+#include "math.hpp"
+
 namespace patch_magic
 {
-    
-// Scientific pitch notation: C4 = middle C, A4 = 440 Hz (12-TET)
-struct notes
+
+namespace detail
 {
-    static constexpr float A4 = 440.0f;
-
-    inline static constexpr float compute(int i)
+    constexpr float compute(uint32_t i)
     {
-        int semitones_from_A4 = i - 57;
-        float exponent = static_cast<float>(semitones_from_A4) / 12.0f;
-        return A4 * std::pow(2.0f, exponent);
+        // Scientific pitch notation: C4 = middle C, A4 = 440 Hz (12-TET)
+        constexpr float a4 = 440.0f;
+        // c4 == 48, so 48 - 57 == -9 => c4 is 9 semitones down from a4
+        uint32_t semitones_from_a4 = i - 57;
+        float exponent = static_cast<float>(semitones_from_a4) / 12.0f;
+        return a4 * std::pow(2.0f, exponent);
     }
+            
+    template<auto Intervals, uint32_t Octave, uint32_t Root>
+    constexpr float any_scale(uint32_t nr)
+    {
+        if (nr < 1)
+            return inaudible_freq;
+    
+        constexpr size_t s = std::size(Intervals);
+        
+        uint32_t group = (nr - 1) % s;
+        uint32_t oct_add = (nr - 1) / s;
+        uint32_t final_i = (Octave + oct_add) * 12 + (Root + Intervals[group]);  // (0=C, ..., 11=B)
+        return compute(final_i);
+    }
+        
+    template<auto Intervals, uint32_t Root>
+    struct scale_filler
+    {
+        constexpr static auto fill(std::index_sequence<Octave...>)
+        {
+            return std::array{ any_scale<Intervals, Octave, Root>... };
+        }
+    };
+    
+    template<uint32_t Root>
+    struct note_filler
+    {
+        constexpr static auto fill(std::index_sequence<Octave...>)
+        {
+            return std::array{ compute(Octave * 12 + Root)... };
+        }
+    };
+}
 
-    static constexpr float C (int octave) { return compute(octave * 12 +  0); }
-    static constexpr float Cs(int octave) { return compute(octave * 12 +  1); } // C♯/D♭
-    static constexpr float D (int octave) { return compute(octave * 12 +  2); }
-    static constexpr float Ds(int octave) { return compute(octave * 12 +  3); } // D♯/E♭
-    static constexpr float E (int octave) { return compute(octave * 12 +  4); }
-    static constexpr float F (int octave) { return compute(octave * 12 +  5); }
-    static constexpr float Fs(int octave) { return compute(octave * 12 +  6); } // F♯/G♭
-    static constexpr float G (int octave) { return compute(octave * 12 +  7); }
-    static constexpr float Gs(int octave) { return compute(octave * 12 +  8); } // G♯/A♭
-    static constexpr float A (int octave) { return compute(octave * 12 +  9); }
-    static constexpr float As(int octave) { return compute(octave * 12 + 10); } // A♯/B♭
-    static constexpr float B (int octave) { return compute(octave * 12 + 11); }
-
-    // Flat aliases (optional but nice)
-    static constexpr float Db(int octave) { return Cs(octave); }
-    static constexpr float Eb(int octave) { return Ds(octave); }
-    static constexpr float Gb(int octave) { return Fs(octave); }
-    static constexpr float Ab(int octave) { return Gs(octave); }
-    static constexpr float Bb(int octave) { return As(octave); }
+namespace notes
+{
+    using namespace detail;
+    
+    constexpr auto is = std::make_index_sequence<10>{};
+    
+    constexpr auto c = note_filler<0>::fill(is);
+    constexpr auto cs = note_filler<1>::fill(is);
+    constexpr auto d = note_filler<2>::fill(is);
+    constexpr auto ds = note_filler<3>::fill(is);
+    constexpr auto e = note_filler<4>::fill(is);
+    constexpr auto f = note_filler<5>::fill(is);
+    constexpr auto fs = note_filler<6>::fill(is);
+    constexpr auto g = note_filler<7>::fill(is);
+    constexpr auto gs = note_filler<8>::fill(is);
+    constexpr auto a = note_filler<9>::fill(is);
+    constexpr auto as = note_filler<10>::fill(is);
+    constexpr auto b = note_filler<11>::fill(is);
+              
+    constexpr auto db = cs;
+    constexpr auto eb = ds;
+    constexpr auto gb = fs;
+    constexpr auto ab = gs;
+    constexpr auto bb = as;
 };
 
-// Compile-time sanity checks
-static_assert(notes::C(4)  > 261.62f && notes::C(4) < 261.64f, "C4 frequency wrong");
-static_assert(notes::A(4) == 440.0f, "A4 must be exactly 440 Hz");
+
+namespace scales
+{
+    namespace chords
+    {
+        using namespace detail;
+        
+        constexpr std::array<size_t, 3> major_intervals = { 0, 4, 7 };
+        constexpr std::array<size_t, 3> minor_intervals = { 0, 3, 7 };
+        
+        constexpr auto is = std::make_index_sequence<10>{};
+    
+        constexpr auto c_major = scale_filler<major_intervals, 0>::fill(is);
+        constexpr auto cs_major = scale_filler<major_intervals, 1>::fill(is);
+        constexpr auto d_major = scale_filler<major_intervals, 2>::fill(is);
+        constexpr auto ds_major = scale_filler<major_intervals, 3>::fill(is);
+        constexpr auto e_major = scale_filler<major_intervals, 4>::fill(is);
+        constexpr auto f_major = scale_filler<major_intervals, 5>::fill(is);
+        constexpr auto fs_major = scale_filler<major_intervals, 6>::fill(is);
+        constexpr auto g_major = scale_filler<major_intervals, 7>::fill(is);
+        constexpr auto gs_major = scale_filler<major_intervals, 8>::fill(is);
+        constexpr auto a_major = scale_filler<major_intervals, 9>::fill(is);
+        constexpr auto as_major = scale_filler<major_intervals, 10>::fill(is);
+        constexpr auto b_major = scale_filler<major_intervals, 11>::fill(is);
+                  
+        constexpr auto df_major = cs_major;
+        constexpr auto ef_major = ds_major;
+        constexpr auto gf_major = fs_major;
+        constexpr auto af_major = gs_major;
+        constexpr auto bf_major = as_major;
+                  
+        constexpr auto c_minor = scale_filler<minor_intervals, 0>::fill(is);
+        constexpr auto cs_minor = scale_filler<minor_intervals, 1>::fill(is);
+        constexpr auto d_minor = scale_filler<minor_intervals, 2>::fill(is);
+        constexpr auto ds_minor = scale_filler<minor_intervals, 3>::fill(is);
+        constexpr auto e_minor = scale_filler<minor_intervals, 4>::fill(is);
+        constexpr auto f_minor = scale_filler<minor_intervals, 5>::fill(is);
+        constexpr auto fs_minor = scale_filler<minor_intervals, 6>::fill(is);
+        constexpr auto g_minor = scale_filler<minor_intervals, 7>::fill(is);
+        constexpr auto gs_minor = scale_filler<minor_intervals, 8>::fill(is);
+        constexpr auto a_minor = scale_filler<minor_intervals, 9>::fill(is);
+        constexpr auto as_minor = scale_filler<minor_intervals, 10>::fill(is);
+        constexpr auto b_minor = scale_filler<minor_intervals, 11>::fill(is);
+                  
+        constexpr auto df_minor = cs_minor;
+        constexpr auto ef_minor = ds_minor;
+        constexpr auto gf_minor = fs_minor;
+        constexpr auto af_minor = gs_minor;
+        constexpr auto bf_minor = as_minor;
+    }
+};
 
 }
 

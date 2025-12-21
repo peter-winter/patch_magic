@@ -5,6 +5,7 @@
 #include "runtime.hpp"
 #include "invoker.hpp"
 #include "utils.hpp"
+#include "event_generators.hpp"
 
 #include <stdexcept>
 #include <map>
@@ -22,10 +23,11 @@ public:
     
     void load(const source& src)
     {
+        r_.set_top_sequence_duration(src.top_sequence_duration_);
         for (const auto& p : src.patches_)
             load_patch(p);
-        for (const auto& t : src.timelines_)
-            load_timeline(t);
+        for (const auto& t : src.sequences_)
+            load_sequence(t);
         for (const auto& i : src.instruments_)
             load_instrument(i);
     }
@@ -37,10 +39,10 @@ private:
         if (patch_it == patch_map_.end())
             throw std::invalid_argument("Unknown patch");
             
-        auto timeline_it = timeline_map_.find(src_i.timeline_name_);
-        if (timeline_it == timeline_map_.end())
-            throw std::invalid_argument("Unknown timeline");
-        r_.add_instrument(src_i.name_, r_.get_patch(patch_it->second), r_.get_timeline(timeline_it->second));
+        auto ev_g_it = event_generator_map_.find(src_i.sequence_name_);
+        if (ev_g_it == event_generator_map_.end())
+            throw std::invalid_argument("Unknown sequence");
+        r_.add_instrument(src_i.name_, r_.get_patch(patch_it->second), r_.get_event_generator(ev_g_it->second), src_i.on_duration_);
     }
     
     void load_patch(const patch_source& src_p)
@@ -51,14 +53,10 @@ private:
         load_patch_ops(src_p.ops_, r_.get_patch(patch_idx));
     }
     
-    void load_timeline(const timeline_source& src_t)
+    void load_sequence(const sequence_source& src_s)
     {
-        sample_index duration_samples = static_cast<sample_index>(static_cast<double>(r_.sample_rate()) * src_t.duration_seconds_);
-        
-        size_t timeline_idx = r_.add_timeline(duration_samples, src_t.looping_);
-        timeline_map_[src_t.name_] = timeline_idx;
-        
-        load_timeline_events(src_t.events_, r_.get_timeline(timeline_idx));
+        size_t event_generator_idx = r_.add_event_generator(src_s.sequence_);
+        event_generator_map_[src_s.name_] = event_generator_idx;
     }
     
     void load_patch_ops(const std::vector<op_source>& src_ops, patch& p)
@@ -75,23 +73,6 @@ private:
             );
             
             p.add_op(create_runtime_op(state_idx, src_op, p));
-        }
-    }
-    
-    void load_timeline_events(const std::vector<timed_event_source>& src_events, timeline& t)
-    {
-        for (const auto& src_ev : src_events)
-        {
-            std::visit(
-                overloaded
-                {
-                    [&](const sound_on_source& e) { t.sound_on_at(r_.sample_rate() * src_ev.time_point_, e.id_); },
-                    [&](const sound_off_source& e) { t.sound_off_at(r_.sample_rate() * src_ev.time_point_, e.id_); },
-                    [&](const note_on_source& e) { t.note_on_at(r_.sample_rate() * src_ev.time_point_, e.id_, e.freq_); },
-                    [&](const note_off_source& e) { t.note_off_at(r_.sample_rate() * src_ev.time_point_, e.id_); }
-                },
-                src_ev.ev_
-            );
         }
     }
     
@@ -164,7 +145,7 @@ private:
     
     runtime& r_;
     std::map<std::string, size_t> patch_map_;
-    std::map<std::string, size_t> timeline_map_;
+    std::map<std::string, size_t> event_generator_map_;
 };
 
 }

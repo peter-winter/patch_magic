@@ -40,4 +40,10 @@ using unique_tuple_t = typename unique_types_tuple<T...>::type;
 template<class... Ts>
 struct overloaded : Ts... { using Ts::operator()...; };
 
+template<typename... T>
+auto array_fill(T...args) { return std::array{args...}; }
+
+template<typename... T>
+auto array_fill(T...args) { return std::array{args...}; }
+
 }

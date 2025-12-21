@@ -8,11 +8,13 @@
 namespace patch_magic
 {
 
-instrument::instrument(std::string name, size_t max_voice_count, size_t reg_count, const patch& p, const sequence& seq):
+instrument::instrument(std::string name, max_voice_count, size_t reg_count, const patch& p, const seq_event_generator& gen, float on_duration):
     name_(name),
-    max_voice_count_(max_voice_count), reg_count_(reg_count), p_(p), seq_(seq), 
+    max_voice_count_(max_voice_count), reg_count_(reg_count), p_(p),
     read_order_idx_(0), write_order_idx_(1), audible_count_(0), free_count_(max_voice_count),
-    unordered_samples_total_(0)
+    unordered_samples_total_(0),
+    gen_(gen),
+    on_duration_(on_duration)
 {
     for (size_t i = 0; i < max_voice_count_; ++i)
         voice_slots_.emplace_back(reg_count_, p_);
@@ -20,6 +22,8 @@ instrument::instrument(std::string name, size_t max_voice_count, size_t reg_coun
     order_[0].resize(max_voice_count_);
     order_[1].resize(max_voice_count_);
     free_.resize(max_voice_count_);
+    
+    events_.reserve(gen_.get_max_simultaneous_events_count());
     
     reset();
     
@@ -35,6 +39,8 @@ void instrument::reset()
     write_order_idx_ = 1;
     audible_count_ = 0;
     free_count_ = max_voice_count_;
+    
+    events_.clear();
     
     std::iota(free_.begin(), free_.end(), 0);
 }
@@ -67,23 +73,23 @@ void instrument::do_off(uint32_t id)
     
 void instrument::process_events()
 {
-    auto events = t_.get_events();
+    gen_.generate_events(events_, on_duration_);
     
-    for (const auto& e : events)
+    for (const auto& e : events_)
     {
-        const auto& ev = e.payload;
-        switch (ev.type_)
+        switch (e.type_)
         {
             case event_type::note_on:
             case event_type::sound_on:
-                do_on(ev.id_, ev.freq_);
+                do_on(e.id_, ev.freq_);
                 break;
             case event_type::note_off:
             case event_type::sound_off:
-                do_off(ev.id_);
+                do_off(e.id_);
                 break;
         };
     }
+    events_.clear();
 }
 
 size_t instrument::allocate_voice()
@@ -146,8 +152,6 @@ float instrument::sample()
 
     audible_count_ = write_idx;
     std::swap(read_order_idx_, write_order_idx_);
-    
-    gen_.inc();
     
     return sum;
 }
