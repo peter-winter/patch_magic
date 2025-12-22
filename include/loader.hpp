@@ -39,8 +39,8 @@ private:
         if (patch_it == patch_map_.end())
             throw std::invalid_argument("Unknown patch");
             
-        auto ev_g_it = event_generator_map_.find(src_i.sequence_name_);
-        if (ev_g_it == event_generator_map_.end())
+        auto ev_g_it = sequence_descr_map_.find(src_i.sequence_name_);
+        if (ev_g_it == sequence_descr_map_.end())
             throw std::invalid_argument("Unknown sequence");
         r_.add_instrument(src_i.name_, r_.get_patch(patch_it->second), r_.get_event_generator(ev_g_it->second), src_i.on_duration_);
     }
@@ -55,8 +55,8 @@ private:
     
     void load_sequence(const sequence_source& src_s)
     {
-        size_t event_generator_idx = r_.add_event_generator(src_s.sequence_);
-        event_generator_map_[src_s.name_] = event_generator_idx;
+        size_t event_generator_idx = std::visit([&](const auto& s) { return r_.add_event_generator(s); }, src_s.sequence_descr_);
+        sequence_descr_map_[src_s.name_] = event_generator_idx;
     }
     
     void load_patch_ops(const std::vector<op_source>& src_ops, patch& p)
@@ -145,7 +145,7 @@ private:
     
     runtime& r_;
     std::map<std::string, size_t> patch_map_;
-    std::map<std::string, size_t> event_generator_map_;
+    std::map<std::string, size_t> sequence_descr_map_;
 };
 
 }

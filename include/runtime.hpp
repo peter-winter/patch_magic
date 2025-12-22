@@ -12,17 +12,11 @@ namespace patch_magic
 
 using instruments_t = std::vector<instrument>;
 using patches_t = std::vector<patch>;
-using event_generators_t = std::vector<seq_event_generator>;
+using event_generators_t = std::vector<event_generator>;
 
 using debug_callback = void(*)(const char*);
 
 constexpr float default_top_sequence_duration = 4.0f;
-
-struct event_id_generator
-{
-    uint32_t generate() { return ++current_id_; }
-    uint32_t current_id_{0};
-};
 
 class runtime
 {
@@ -31,7 +25,7 @@ public:
 
     void reset();
 
-    bool active() const;
+    bool done() const;
     
     void set_debug_callback(debug_callback cb) { debug_callback_ = cb; }
     
@@ -44,10 +38,13 @@ public:
     const patch& get_patch(size_t idx) const;
     patch& get_patch(size_t idx);
     
-    size_t add_event_generator(const sequences::note_sequence& note_seq);    
-    const seq_event_generator& get_event_generator(size_t idx) const;
+    size_t add_event_generator(const sequences::seq_item_note& note_seq_descr);
+    size_t add_event_generator(const sequences::seq_item_tick& sound_seq_descr);
     
-    size_t add_instrument(std::string name, const patch& p, const seq_event_generator& gen, float on_duration);
+    const event_generator& get_event_generator(size_t idx) const;
+    event_generator& get_event_generator(size_t idx);
+    
+    size_t add_instrument(std::string name, const patch& p, event_generator& gen, float on_duration);
         
     void sample(float* data, size_t channel_count);
     

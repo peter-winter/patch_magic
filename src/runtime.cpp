@@ -1,5 +1,6 @@
 #include "runtime.hpp"
 #include "polyphony.hpp"
+#include "event_id_generator.hpp"
 
 namespace patch_magic
 {
@@ -20,18 +21,18 @@ void runtime::reset()
 {
     for (auto& instr : instruments_)
         instr.reset();
-    for (auto& t : timelines_)
-        t.reset();
+    for (auto& gen : event_generators_)
+        std::visit([](auto& g) { g.reset(); }, gen);
 }
 
-bool runtime::active() const
+bool runtime::done() const
 {
-    for (const auto& t : timelines_)
+    for (const auto& gen : event_generators_)
     {
-        if (t.active())
-            return true;
+        if (std::visit([](auto& g) { return g.done(); }, gen))
+            return false;
     }
-    return false;
+    return true;
 }
 
 void runtime::sample(float* data, size_t channel_count)
@@ -39,9 +40,7 @@ void runtime::sample(float* data, size_t channel_count)
     float sum = 0.0f;
         
     for (auto& instr : instruments_)
-    {
         sum += instr.sample();
-    }
         
     float gain = polyphony_gain(instruments_.size(), polyphony_scale::equal_amplitude);
     float sample = sum * gain;
@@ -50,7 +49,7 @@ void runtime::sample(float* data, size_t channel_count)
         data[i] = sample;
         
     for (auto& gen : event_generators_)
-        gen.inc();
+        std::visit([](auto& g) { g.inc(); }, gen);
         
     debug();
 }
@@ -71,26 +70,32 @@ patch& runtime::get_patch(size_t idx)
     return patches_[idx];
 }
 
-size_t runtime::add_event_generator(const sequences::note_sequence& note_seq)
+size_t runtime::add_event_generator(const sequences::seq_item_note& note_seq_descr)
 {
-    event_generators_.emplace_back(sample_rate_, top_sequence_duration_ * note_seq.seq_.size(), note_seq.seq_, note_seq.nbv_, eidg_);
+    event_generators_.emplace_back(std::in_place_type<note_event_generator>, sample_rate_, top_sequence_duration_, note_seq_descr, eidg_);
     return event_generators_.size() - 1;
 }
 
-const seq_event_generator& runtime::get_event_generator(size_t idx) const
+size_t runtime::add_event_generator(const sequences::seq_item_tick& sound_seq_descr)
+{
+    event_generators_.emplace_back(std::in_place_type<sound_event_generator>, sample_rate_, top_sequence_duration_, sound_seq_descr, eidg_);
+    return event_generators_.size() - 1;
+}
+
+const event_generator& runtime::get_event_generator(size_t idx) const
 {
     return event_generators_[idx];
 }
 
-size_t runtime::add_instrument(std::string name, const patch& p, const seq_event_generator& gen, float on_duration)
+event_generator& runtime::get_event_generator(size_t idx)
+{
+    return event_generators_[idx];
+}
+
+size_t runtime::add_instrument(std::string name, const patch& p,    event_generator& gen, float on_duration)
 {
     instruments_.emplace_back(name, max_voice_count_per_instrument_, reg_count_per_voice_, p, gen, on_duration); 
     return instruments_.size() - 1;
-}
-
-const instruments_t& runtime::get_instruments() const
-{
-    return instruments_;
 }
 
 void runtime::debug()

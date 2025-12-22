@@ -1,6 +1,7 @@
 #pragma once
 
 #include "sequences.hpp"
+#include "runtime_processor_wrappers.hpp"
 
 #include <array>
 #include <string>
@@ -47,10 +48,12 @@ struct patch_source
     std::vector<op_source> ops_;
 };
 
+using sequence_descr_t = std::variant<sequences::seq_item_note, sequences::seq_item_tick>;
+
 struct sequence_source
 {
     std::string name_;
-    sequences::note_sequence sequence_;
+    sequence_descr_t sequence_descr_;
 };
 
 struct source

@@ -19,7 +19,7 @@ using idx_vector_t = std::vector<size_t>;
 class instrument
 {
 public:
-    instrument(std::string name, uint32_t sample_rate, size_t max_voice_count, size_t reg_count, const patch& p, const seq_event_generator& gen, float on_duration);
+    instrument(std::string name, size_t max_voice_count, size_t reg_count, const patch& p, event_generator& gen, float on_duration);
         
     void reset();
     
@@ -37,7 +37,6 @@ private:
     size_t max_voice_count_;
     size_t reg_count_;
     const patch& p_;
-    const note_sequence& seq_;
     voice_slots_t voice_slots_;
     
     idx_vector_t order_[2];
@@ -48,7 +47,7 @@ private:
     idx_vector_t free_;
     size_t unordered_samples_total_;
     
-    const seq_event_generator& gen_;
+    event_generator& gen_;
     float on_duration_;
     
     std::vector<event> events_;

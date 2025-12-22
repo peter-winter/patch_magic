@@ -33,9 +33,9 @@ void synth::load(const source& src)
     ld.load(src);
 }
 
-bool synth::is_running() const
+bool synth::done() const
 {
-    return runtime_.active();
+    return runtime_.done();
 }
 
 void synth::play()

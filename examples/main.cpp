@@ -41,5 +41,13 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    return it->second();
+    try
+    {
+        it->second();
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Error: " << e.what() << '\n';
+        return 1;
+    }
 }

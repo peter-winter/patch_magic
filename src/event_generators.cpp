@@ -18,146 +18,64 @@ bool time_tracker::inc()
     return false;
 }
 
-base_event_generator::base_event_generator(uint32_t sample_rate, float duration, note_base nb, event_id_generator& eidg):
-        tt_(sample_rate, duration), done_(false), nb_(nb), eidg_(eidg)
-{}
-
-bool base_event_generator::inc()
+note_event_generator::note_event_generator(uint32_t sample_rate, float duration, const seq_item_note& descr, event_id_generator& eidg):
+    item_tt_(sample_rate, duration)
 {
-    if (tt_.inc())
-        done_ = true;
-    return done_;
-}
-        
-simple_event_generator::simple_event_generator(uint32_t sample_rate, float duration, const simple_note& s, event_id_generator& eidg):
-    base_event_generator(sample_rate, duration, eidg), freq_(s.t_.freq_), on_event_fired_(0), off_event_fired_(false)
-{}
-
-void simple_event_generator::inc()
-{
-    if (base_event_generator::inc())
-    {
-        on_event_fired_ = 0;
-        off_event_fired_ = false;
-    }
+    reset();
 }
 
-void simple_event_generator::generate_events(events& evs, float on_duration)
+void note_event_generator::generate_events(events& es, float on_duration)
 {
-    if (on_event_fired_ == 0)
-    {
-        uint32_t id = eidg_.generate();
-        evs.push_back(event(event_type::note_on, id, freq_));
-        on_event_fired_ = id;
-    }
-    else if (!off_event_fired_ && (tt_.time_ / tt_.duration_ > on_duration) && (tt_.time_ < tt_.duration_))
-    {
-        evs.push_back(event(event_type::note_off, on_event_fired_));
-        off_event_fired_ = true;
-    }
-}
     
-parallel_event_generator::parallel_event_generator(uint32_t sample_rate, float duration, const parallel_note& p, event_id_generator& eidg):
-    base_event_generator(sample_rate, duration, eidg), off_events_fired_(false)
-{
-    for (const auto& s : p.items_)
-        freqs_.push_back(s.t_.freq_);
-        
-    on_events_fired_.reserve(freqs_.size());
 }
 
-void parallel_event_generator::inc()
+void note_event_generator::inc()
 {
-    if (base_event_generator::inc())
-    {
-        on_events_fired_.clear();
-        off_events_fired_ = false;
-    }
+    //bool inc_res = item_tt_.inc();
 }
 
-void parallel_event_generator::generate_events(events& evs, float on_duration)
+bool note_event_generator::done() const
 {
-    if (on_events_fired_.empty())
-    {
-        for (float freq : freqs_)
-        {
-            uint32_t id = eidg_.generate();
-            evs.push_back(event(event_type::note_on, id, freq));
-            on_events_fired_.push_back(id);
-        }
-    }
-    else if (!off_events_fired_ && (tt_.time_ / tt_.duration_ > on_duration) && (tt_.time_ < tt_.duration_))
-    {
-        for (uint32_t on : on_events_fired_)
-        {
-            evs.push_back(event(event_type::note_off, on));
-            off_events_fired_ = true;
-        }
-    }
+    return false;
 }
+
+size_t note_event_generator::get_max_simultaneous_events_count() const
+{
+    return 0;
+}
+
+void note_event_generator::reset()
+{
+}
+
+sound_event_generator::sound_event_generator(uint32_t sample_rate, float duration, const seq_item_tick& descr, event_id_generator& eidg):
+    item_tt_(sample_rate, duration)
+{
+    reset();
+}
+
+void sound_event_generator::generate_events(events& es, float on_duration)
+{
     
-seq_event_generator::seq_event_generator(uint32_t sample_rate, float duration, const note_sequence& seq, event_id_generator& eidg):
-    item_tt_(sample_rate, duration / seq.size()), current_item_idx_(0), gens_(create_item_generators(sample_rate, duration, seq, eidg))
-{}
-
-void seq_event_generator::generate_events(events& es)
-{
-    std::visit(
-        [&](auto& gen){ gen.generate_events(es); },
-        gens_[current_item_idx_].gen_
-    );
 }
 
-void seq_event_generator::inc()
+void sound_event_generator::inc()
 {
-    bool inc_res = item_tt_.inc();
-    
-    std::visit(
-        [](auto& gen){ return gen.inc(); },
-        gens_[current_item_idx_].gen_
-    );
-    
-    if (inc_res)
-    {
-        current_item_idx_++;
-        
-        if (current_item_idx_ == gens_.size())
-            current_item_idx_ = 0;
-    }
+    //bool inc_res = item_tt_.inc();
 }
 
-bool seq_event_generator::done() const
+bool sound_event_generator::done() const
 {
-    return std::visit(
-        [](const auto& gen){ return gen.done(); },
-        gens_.back().gen_
-    );
+    return false;
 }
 
-item_event_generators seq_event_generator::create_item_generators(uint32_t sample_rate, float duration, const note_sequence& seq, event_id_generator& eidg)
+size_t sound_event_generator::get_max_simultaneous_events_count() const
 {
-    item_event_generators ret;
-    for (const auto& it : seq)
-        ret.emplace_back(create_item_generator(sample_rate, duration / seq.size(), it.i_, eidg));
-    return ret;
+    return 0;
 }
 
-item_event_generator_wrapper seq_event_generator::create_item_generator(uint32_t sample_rate, float item_duration, const item& it, event_id_generator& eidg)
+void sound_event_generator::reset()
 {
-    return item_event_generator_wrapper{
-        std::visit(
-            [&]<typename T>(const T& i) { return item_event_generator(std::in_place_type<event_generator_t<T>>, sample_rate, item_duration, i, eidg); },
-            it
-        )
-    };
-}
-
-size_t seq_event_generator::get_max_simultaneous_events_count() const
-{
-    size_t ret = 0;
-    for (const auto& g : gens_)
-        ret = std::max(ret, std::visit([](const auto& gen) { return gen.get_max_simultaneous_events_count(); }, g.gen_));
-    return ret;
 }
 
 }
