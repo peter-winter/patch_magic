@@ -23,11 +23,10 @@ public:
     
     void load(const source& src)
     {
-        r_.set_top_sequence_duration(src.top_sequence_duration_);
         for (const auto& p : src.patches_)
             load_patch(p);
-        for (const auto& t : src.sequences_)
-            load_sequence(t);
+        for (const auto& t : src.flows_)
+            load_flow(t);
         for (const auto& i : src.instruments_)
             load_instrument(i);
     }
@@ -39,10 +38,10 @@ private:
         if (patch_it == patch_map_.end())
             throw std::invalid_argument("Unknown patch");
             
-        auto ev_g_it = sequence_descr_map_.find(src_i.sequence_name_);
+        auto ev_g_it = sequence_descr_map_.find(src_i.flow_name_);
         if (ev_g_it == sequence_descr_map_.end())
-            throw std::invalid_argument("Unknown sequence");
-        r_.add_instrument(src_i.name_, r_.get_patch(patch_it->second), r_.get_event_generator(ev_g_it->second), src_i.on_duration_);
+            throw std::invalid_argument("Unknown flow");
+        r_.add_instrument(src_i.name_, r_.get_patch(patch_it->second), r_.get_event_generator(ev_g_it->second));
     }
     
     void load_patch(const patch_source& src_p)
@@ -53,10 +52,10 @@ private:
         load_patch_ops(src_p.ops_, r_.get_patch(patch_idx));
     }
     
-    void load_sequence(const sequence_source& src_s)
+    void load_flow(const flow_source& src_f)
     {
-        size_t event_generator_idx = std::visit([&](const auto& s) { return r_.add_event_generator(s); }, src_s.sequence_descr_);
-        sequence_descr_map_[src_s.name_] = event_generator_idx;
+        size_t event_generator_idx = r_.add_event_generator(src_f.f_);
+        sequence_descr_map_[src_f.name_] = event_generator_idx;
     }
     
     void load_patch_ops(const std::vector<op_source>& src_ops, patch& p)

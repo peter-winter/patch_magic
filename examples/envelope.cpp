@@ -4,7 +4,6 @@
 #include <sequences.hpp>
 
 using namespace patch_magic;
-using namespace patch_magic::sequences;
 using namespace patch_magic::notes;
 
 void envelope()
@@ -18,23 +17,23 @@ void envelope()
         {
             "sine440",
             {
-                {sine, 0, const_f_source{440.0f}, const_f_source{0.5f}},
+                
+                {base_freq, 0},
+                {sine, 0, reg_f_source{0}, const_f_source{0.5f}},
                 {env_ar, 1, const_f_source{0.5f}, const_f_source{5.0f}},
                 {vol, 0, reg_f_source{1}, reg_f_source{0}}
             }
         }
     };
     
-    std::vector<sequence_source> seqs
+    std::vector<flow_source> flows
     {
-        {
-            "seq", _n(f[3], _x_, g[3], _x_, as[3], _x_)
-        }
+        { "f", flow()(c(3), x, g(3), x, e(3), x) }
     };
     
-    std::vector<instrument_source> instruments{{"i1", "sine440", "seq", 1.0f}};
+    std::vector<instrument_source> instruments{{"i1", "sine440", "f"}};
     
-    source src{ patches, instruments, seqs, 12.0f };
+    source src{ patches, instruments, flows };
     
     s.load(src);
     

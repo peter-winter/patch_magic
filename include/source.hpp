@@ -38,8 +38,7 @@ struct instrument_source
 {
     std::string name_;
     std::string patch_name_;
-    std::string sequence_name_;
-    float on_duration_;
+    std::string flow_name_;
 };
 
 struct patch_source
@@ -48,20 +47,18 @@ struct patch_source
     std::vector<op_source> ops_;
 };
 
-using sequence_descr_t = std::variant<sequences::seq_item_note, sequences::seq_item_tick>;
-
-struct sequence_source
+struct flow_source
 {
     std::string name_;
-    sequence_descr_t sequence_descr_;
+    flow f_;
 };
 
 struct source
 {
     std::vector<patch_source> patches_;
     std::vector<instrument_source> instruments_;
-    std::vector<sequence_source> sequences_;
-    float top_sequence_duration_;
+    std::vector<flow_source> flows_;
+    float top_level_item_duration_;
 };
 
 }

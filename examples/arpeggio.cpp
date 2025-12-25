@@ -3,7 +3,6 @@
 #include <sequences.hpp>
 
 using namespace patch_magic;
-using namespace patch_magic::sequences;
 
 void arpeggio()
 {
@@ -17,35 +16,21 @@ void arpeggio()
             "sine",
             {
                 {base_freq, 0},
-                {sine, 0, reg_f_source{0}, const_f_source{0.3f}},
-                {env_ar, 1, const_f_source{0.2f}, const_f_source{0.8f}},
+                {sine, 0, reg_f_source{0}, const_f_source{0.1f}},
+                {env_ar, 1, const_f_source{0.1f}, const_f_source{0.1f}},
                 {vol, 0, reg_f_source{1}, reg_f_source{0}}
             }
         }
     };
     
-    std::vector<sequence_source> seqs
+    std::vector<flow_source> flows
     {
-        {
-            "seq1", // 40-note arpeggio in D minor
-            _(
-                _(_1, _2, _3, _4),
-                _(_5, _6, _7, _5),
-                _(_3, _4, _5, _6),
-                _(_7, _8, _6, _4),
-                _(_2, _3, _4, _5),
-                _(_6, _7, _8, _9),
-                _(_7, _5, _6, _4),
-                _(_5, _6, _7, _8),
-                _(_9, _7, _5, _6),
-                _(_4, _2, _3, _4)
-            ) | chords::d_minor[3]
-        }
+        { "f", flow(chords::d_minor[3], 0.25f)(0, 0, 1, 0, 2, 1, x, _(3, 3), 2, x, 3, 3, 4, 3)(0, 0, 1, 0, 2, 1, x, _(3, 3), 2, x, 3, 3, 4, 3, 2, 3) }
     };
     
-    std::vector<instrument_source> instruments{{"i1", "sine", "seq1", 0.95f}};
+    std::vector<instrument_source> instruments{{"i1", "sine", "f"}};
     
-    source src{ patches, instruments, seqs, 40.0f };
+    source src{ patches, instruments, flows };
     
     s.load(src);
     
@@ -53,7 +38,7 @@ void arpeggio()
     std::cin.get();
     
     s.set_debug_callback(print_debug);
-    s.play();
+    s.loop();
     poll_until_done(s);
 }
 

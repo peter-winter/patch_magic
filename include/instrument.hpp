@@ -11,15 +11,13 @@
 namespace patch_magic
 {
 
-using namespace sequences;
-
 using voice_slots_t = std::vector<voice_slot>;
 using idx_vector_t = std::vector<size_t>;
 
 class instrument
 {
 public:
-    instrument(std::string name, size_t max_voice_count, size_t reg_count, const patch& p, event_generator& gen, float on_duration);
+    instrument(std::string name, size_t max_voice_count, size_t reg_count, const patch& p, event_generator& gen);
         
     void reset();
     
@@ -48,10 +46,7 @@ private:
     size_t unordered_samples_total_;
     
     event_generator& gen_;
-    float on_duration_;
-    
-    std::vector<event> events_;
-    
+        
     std::string display_line_;
 };
 

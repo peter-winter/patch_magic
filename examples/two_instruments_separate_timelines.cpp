@@ -1,7 +1,6 @@
 #include "main.h"
 
 using namespace patch_magic;
-using namespace patch_magic::sequences;
 
 void two_instruments_separate_timelines()
 {
@@ -33,28 +32,28 @@ void two_instruments_separate_timelines()
         }
     };
 
-    std::vector<sequence_source> seqs
+    std::vector<flow_source> flows
     {
-        // Bass timeline: note on every 2 seconds
-        { "bass_tl", _s(o, x) },
-        // Treble timeline: note on every 1 second (twice as often)
-        { "treble_tl", _s(o, x, o, x) }
+        // Bass timeline: note every 2 seconds
+        { "bass_tl", flow(2.0f)(1, x) },
+        // Treble timeline: note every 1 second (twice as often)
+        { "treble_tl", flow()(1, x, 1, x) }
     };
 
     std::vector<instrument_source> instruments
     {
-        {"bass_instr", "bass_patch", "bass_tl", 1.0f},
-        {"treble_instr","treble_patch", "treble_tl", 1.0f}
+        {"bass_instr", "bass_patch", "bass_tl"},
+        {"treble_instr","treble_patch", "treble_tl"}
     };
 
-    source src{ patches, instruments, seqs, 4.0f };
+    source src{ patches, instruments, flows };
     s.load(src);
     
     std::cout << "Press Enter to play\n";
     std::cin.get();
     
     s.set_debug_callback(print_debug);
-    s.play();
+    s.loop();
     poll_until_done(s);
 }
 

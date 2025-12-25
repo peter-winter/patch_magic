@@ -3,6 +3,7 @@
 #include <variant>
 #include <vector>
 #include <cstdint>
+#include <ranges>
 
 #include "sequences.hpp"
 #include "event_id_generator.hpp"
@@ -10,7 +11,7 @@
 namespace patch_magic
 {
 
-enum class event_type { sound_on, sound_off, note_on, note_off };
+enum class event_type { note_on, note_off };
 
 struct event
 {
@@ -18,59 +19,51 @@ struct event
         : type_(type), id_(id), freq_(freq)
     {}
     
+    static event off(uint32_t id) { return event(event_type::note_off, id); }
+    static event on(uint32_t id, float freq) { return event(event_type::note_on, id, freq); }
+    
     event_type type_;
     uint32_t id_;
     float freq_;
 };
 
-using events = std::vector<event>;
-
-struct time_tracker
+struct timed_event
 {
-    time_tracker(uint32_t sample_rate, float duration):
-        sample_rate_(sample_rate), duration_(duration), time_(0.0f)
-    {}
+    uint64_t time_point_;
+    event e_;
+};
+
+using timed_events = std::vector<timed_event>;
+
+class event_generator
+{
+public:
+    event_generator(uint32_t sample_rate, const flow& f, event_id_generator& eidg);
     
-    bool inc();
+    using event_view = std::ranges::subrange<std::vector<timed_event>::const_iterator>;
+    
+    void inc();
+    bool done() const;
+    const event_view get_current_events() const;
+    void reset();
+    void prepare_events();
+    void rewind();
+    
+private:
+    void generate_timed_events(const flow& f);
+    uint64_t generate_timed_events(const sequence& s, uint64_t progress);
+    uint64_t generate_timed_events(const subsequence& s, uint64_t progress, uint64_t note_length_in_samples);
+    uint64_t generate_timed_events(const note& n, uint64_t progress, uint64_t note_length_in_samples);
     
     uint32_t sample_rate_;
-    float duration_;
-    float time_;
+    uint64_t duration_in_samples_;
+    uint64_t current_sample_;
+    event_id_generator& eidg_;
+    timed_events timed_events_;
+    std::vector<timed_event>::const_iterator next_event_it_;
+    event_view current_event_view_;
 };
 
-class note_event_generator
-{
-public:
-    note_event_generator(uint32_t sample_rate, float duration, const sequences::seq_item_note& descr, event_id_generator& eidg);
-    
-    void generate_events(events& es, float on_duration);
-    void inc();
-    bool done() const;
-    size_t get_max_simultaneous_events_count() const;
-    void reset();
-
-private:
-    
-    time_tracker item_tt_;
-};
-
-class sound_event_generator
-{
-public:
-    sound_event_generator(uint32_t sample_rate, float duration, const sequences::seq_item_tick& descr, event_id_generator& eidg);
-    
-    void generate_events(events& es, float on_duration);
-    void inc();
-    bool done() const;
-    size_t get_max_simultaneous_events_count() const;
-    void reset();
-    
-private:
-    time_tracker item_tt_;
-};
-
-
-using event_generator = std::variant<note_event_generator, sound_event_generator>;
 
 }
 

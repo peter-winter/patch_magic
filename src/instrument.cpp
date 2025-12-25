@@ -8,13 +8,12 @@
 namespace patch_magic
 {
 
-instrument::instrument(std::string name, size_t max_voice_count, size_t reg_count, const patch& p, event_generator& gen, float on_duration):
+instrument::instrument(std::string name, size_t max_voice_count, size_t reg_count, const patch& p, event_generator& gen):
     name_(name),
     max_voice_count_(max_voice_count), reg_count_(reg_count), p_(p),
     read_order_idx_(0), write_order_idx_(1), audible_count_(0), free_count_(max_voice_count),
     unordered_samples_total_(0),
-    gen_(gen),
-    on_duration_(on_duration)
+    gen_(gen)
 {
     for (size_t i = 0; i < max_voice_count_; ++i)
         voice_slots_.emplace_back(reg_count_, p_);
@@ -22,9 +21,7 @@ instrument::instrument(std::string name, size_t max_voice_count, size_t reg_coun
     order_[0].resize(max_voice_count_);
     order_[1].resize(max_voice_count_);
     free_.resize(max_voice_count_);
-    
-    events_.reserve(std::visit([](const auto& g){ return g.get_max_simultaneous_events_count(); }, gen_));
-    
+        
     reset();
     
     display_line_.reserve(1 << 10);
@@ -39,8 +36,6 @@ void instrument::reset()
     write_order_idx_ = 1;
     audible_count_ = 0;
     free_count_ = max_voice_count_;
-    
-    events_.clear();
     
     std::iota(free_.begin(), free_.end(), 0);
 }
@@ -73,23 +68,19 @@ void instrument::do_off(uint32_t id)
     
 void instrument::process_events()
 {
-    std::visit([&](auto& g){ g.generate_events(events_, on_duration_); }, gen_);
-    
-    for (const auto& e : events_)
+    for (const auto& te : gen_.get_current_events())
     {
+        const event& e = te.e_;
         switch (e.type_)
         {
             case event_type::note_on:
-            case event_type::sound_on:
                 do_on(e.id_, e.freq_);
                 break;
             case event_type::note_off:
-            case event_type::sound_off:
                 do_off(e.id_);
                 break;
         };
     }
-    events_.clear();
 }
 
 size_t instrument::allocate_voice()

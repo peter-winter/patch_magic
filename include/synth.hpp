@@ -20,6 +20,7 @@ public:
 
     void load(const source& src);
     void play();
+    void loop();
     bool done() const;
     
     void set_debug_callback(debug_callback cb);
@@ -27,6 +28,8 @@ public:
 private:    
     static inline void data_callback(ma_device* device, void* p_output, const void*, ma_uint32 frame_count);
 
+    void prepare_device();
+    
     runtime runtime_;
     
     ma_device device_{};

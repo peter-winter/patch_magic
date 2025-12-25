@@ -1,7 +1,6 @@
 #include "main.h"
 
 using namespace patch_magic;
-using namespace patch_magic::sequences;
 
 void sine_440_220_mixed()
 {
@@ -27,16 +26,14 @@ void sine_440_220_mixed()
         }
     };
     
-    std::vector<sequence_source> seqs
+    std::vector<flow_source> flows
     {
-        {
-            "seq", _s(o)
-        }
+        { "seq", flow(10.0f)(1) }
     };
     
-    std::vector<instrument_source> instruments{{"i1", "sine440", "seq", 0.95f}, {"i2", "sine220", "seq", 1.0f}};
+    std::vector<instrument_source> instruments{{"i1", "sine440", "seq"}, {"i2", "sine220", "seq"}};
     
-    source src{ patches, instruments, seqs, 10.0f };
+    source src{ patches, instruments, flows };
     
     s.load(src);
     

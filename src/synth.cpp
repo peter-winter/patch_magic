@@ -41,7 +41,18 @@ bool synth::done() const
 void synth::play()
 {
     runtime_.reset();
-    
+    prepare_device();
+    ma_device_start(&device_);
+}
+
+void synth::loop()
+{
+    runtime_.set_looping();
+    play();
+}
+
+void synth::prepare_device()
+{
     ma_device_config cfg = ma_device_config_init(ma_device_type_playback);
     cfg.playback.format = ma_format_f32;
     cfg.playback.channels = static_cast<ma_uint32>(runtime_.channel_count());
@@ -57,8 +68,6 @@ void synth::play()
         throw std::runtime_error("Failed to init audio");
 
     device_initialized_ = true;
-    
-    ma_device_start(&device_);
 }
 
 void synth::data_callback(ma_device* device, void* p_output, const void*, ma_uint32 frame_count)
