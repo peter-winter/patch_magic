@@ -41,10 +41,12 @@ struct instrument_source
     std::string flow_name_;
 };
 
+using ops_source = std::vector<op_source>;
+
 struct patch_source
 {
     std::string name_;
-    std::vector<op_source> ops_;
+    ops_source ops_;
 };
 
 struct flow_source

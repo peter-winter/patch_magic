@@ -10,23 +10,35 @@ void arpeggio()
     
     synth s;
     
-    std::vector<patch_source> patches
-    {
+    std::vector<patch_source> patches;
+    patches.emplace_back(
+        "sine",
+        ops_source
         {
-            "sine",
-            {
-                {base_freq, 0},
-                {sine, 0, reg_f_source{0}, const_f_source{0.1f}},
-                {env_ar, 1, const_f_source{0.1f}, const_f_source{0.1f}},
-                {vol, 0, reg_f_source{1}, reg_f_source{0}}
-            }
+            {base_freq, 0},
+            {sine, 0, reg_f_source{0}, const_f_source{0.1f}},
+            {env_ar, 1, const_f_source{0.1f}, const_f_source{0.1f}},
+            {vol, 0, reg_f_source{1}, reg_f_source{0}}
         }
-    };
+    );
     
-    std::vector<flow_source> flows
-    {
-        { "f", flow(chords::d_minor[3], 0.25f)(0, 0, 1, 0, 2, 1, x, _(3, 3), 2, x, 3, 3, 4, 3)(0, 0, 1, 0, 2, 1, x, _(3, 3), 2, x, 3, 3, 4, 3, 2, 3) }
-    };
+    auto a = _(0, 0, 1, 0, 2, 1, x, _(3, 3), 2, x, 3, 3, 4, 3);
+    auto b = a + _(2, 3);
+    auto c = b + _(1, 2);
+    auto d = c + _(0, 1);
+    
+    std::vector<flow_source> flows;
+    flows.emplace_back(
+        "f", 
+        flow(0.25f)
+            .rep(2)
+                .alt()
+                    .base(chords::a_minor[3])
+                    .base(chords::d_minor[4])
+                .tla()
+                (a, b)
+            .per()
+    );
     
     std::vector<instrument_source> instruments{{"i1", "sine", "f"}};
     
@@ -38,7 +50,7 @@ void arpeggio()
     std::cin.get();
     
     s.set_debug_callback(print_debug);
-    s.loop();
+    s.play();
     poll_until_done(s);
 }
 

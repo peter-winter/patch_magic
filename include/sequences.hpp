@@ -21,97 +21,6 @@ struct note_placeholder
     int64_t degree_;
 };
 
-struct subsequence_item_wrapper;
-using subsequence_items = std::vector<subsequence_item_wrapper>;
-
-class subsequence
-{
-public:
-    subsequence() = default;
-
-    template<typename... Ts>
-    subsequence& operator()(Ts&&... args)
-    {
-        (append(std::forward<Ts>(args)), ...);
-        return *this;
-    }
-
-    const subsequence_items& get_items() const { return items_; }
-    inline void resolve_placeholders(note_from_number resolver_base);
-
-private:
-    inline void resolve_placeholders(subsequence_item_wrapper& wrapper, note_from_number resolver_base);
-    
-    inline void append(note n);
-
-    inline void append(pause);
-    inline void append(int64_t degree);
-    inline void append(const subsequence& nested);
-    
-    subsequence_items items_;
-};
-
-struct subsequence_builder
-{
-    template<typename... Ts>
-    subsequence operator()(Ts&&... args) const { return subsequence{}(std::forward<Ts>(args)...); }
-};
-
-inline constexpr subsequence_builder _{};
-
-using subsequence_item = std::variant<note, pause, subsequence, note_placeholder>;
-
-struct subsequence_item_wrapper
-{
-    subsequence_item item_;
-};
-
-inline void subsequence::append(note n)
-{
-    items_.emplace_back(subsequence_item{std::move(n)});
-}
-
-inline void subsequence::append(pause)
-{
-    items_.emplace_back(subsequence_item{x});
-}
-
-inline void subsequence::append(int64_t degree)
-{
-    items_.emplace_back(subsequence_item{note_placeholder{degree}});
-}
-
-inline void subsequence::append(const subsequence& nested)
-{
-    items_.emplace_back(subsequence_item{nested});
-}
-
-inline void subsequence::resolve_placeholders(subsequence_item_wrapper& wrapper, note_from_number resolver_base)
-{
-    std::visit(
-        overloaded {
-            [&](note_placeholder& pl)
-            {
-                note resolved = (resolver_base != nullptr)
-                    ? resolver_base(pl.degree_)
-                    : note{inaudible_frequency};
-                wrapper.item_.emplace<note>(std::move(resolved));
-            },
-            [&](subsequence& sub) { sub.resolve_placeholders(resolver_base); },
-            [](auto&) {}
-        }, 
-        wrapper.item_
-    );
-}
-
-inline void subsequence::resolve_placeholders(note_from_number resolver_base)
-{
-    for (auto& wrapper : items_)
-        resolve_placeholders(wrapper, resolver_base);
-}
-
-using sequence_item = std::variant<note, pause, subsequence>;
-
 struct sequence_item_wrapper;
 using sequence_items = std::vector<sequence_item_wrapper>;
 
@@ -119,11 +28,6 @@ class sequence
 {
 public:
     sequence() = default;
-
-    sequence(note_from_number base, float length = 1.0f):
-        base_(base),
-        note_length_(length)
-    {}
 
     template<typename... Ts>
     sequence& operator()(Ts&&... args)
@@ -133,105 +37,147 @@ public:
     }
 
     const sequence_items& get_items() const { return items_; }
-
-    float note_length() const { return note_length_; }
     
-    constexpr float total_duration() const
-    {
-        return items_.size() * note_length_;
-    }
+    inline void concat_sequence(const sequence& seq);
     
 private:
-    void append(note n)
-    {
-        items_.emplace_back(sequence_item{std::move(n)});
-    }
-
-    void append(pause)
-    {
-        items_.emplace_back(sequence_item{x});
-    }
-
-    void append(int64_t degree)
-    {
-        if (base_ != nullptr)
-            items_.emplace_back(sequence_item{base_(degree)});
-        else
-            items_.emplace_back(sequence_item{note{inaudible_frequency}});
-    }
-
-    void append(const subsequence& sub)
-    {
-        auto resolved = sub;
-        resolved.resolve_placeholders(base_);
-        items_.emplace_back(sequence_item{std::move(resolved)});
-    }
+    inline void append(note n);
+    inline void append(pause);
+    inline void append(int64_t degree);
+    inline void append(const sequence& sub);
+    inline void append(sequence&& sub);
     
     sequence_items items_;
-    note_from_number base_{nullptr};
-    float note_length_{1.0f};
 };
+
+using sequence_item = std::variant<note, pause, sequence, note_placeholder>;
 
 struct sequence_item_wrapper
 {
-    sequence_item item_;
+    sequence_item wrapped_;
 };
 
-using sequences = std::vector<sequence>;
+inline void sequence::append(note n) { items_.emplace_back(sequence_item{std::move(n)}); }
+inline void sequence::append(pause) { items_.emplace_back(sequence_item{x}); }
+inline void sequence::append(int64_t degree) { items_.emplace_back(sequence_item{note_placeholder{degree}}); }
+inline void sequence::append(const sequence& sub) { items_.emplace_back(sequence_item{sub}); }
+inline void sequence::append(sequence&& sub) { items_.emplace_back(sequence_item{std::move(sub)}); }
+
+inline void sequence::concat_sequence(const sequence& seq) { items_.insert(items_.end(), seq.get_items().begin(), seq.get_items().end()); }
+
+struct sequence_builder
+{
+    template<typename... Ts>
+    sequence operator()(Ts&&... args) const { return sequence{}(std::forward<Ts>(args)...); }
+};
+
+inline constexpr sequence_builder _{};
+
+inline sequence operator + (const sequence& s1, const sequence& s2)
+{
+    sequence ret;
+    ret.concat_sequence(s1);
+    ret.concat_sequence(s2);
+    return ret;
+}
+
+struct repeat_marker
+{
+    uint64_t n_;
+};
+
+struct repeat_done_marker
+{};
+
+struct alt_marker
+{};
+
+struct alt_done_marker
+{};
+
+struct note_length_change
+{
+    float val_;
+};
+
+struct base_change
+{
+    note_from_number base_;
+};
+
+using flow_item = std::variant<sequence, repeat_marker, repeat_done_marker, alt_marker, alt_done_marker, note_length_change, base_change>;
+using flow_items = std::vector<flow_item>;
 
 class flow
 {
 public:
     flow() = default;
 
-    explicit flow(note_from_number base):
-        current_base_(base)
+    explicit flow(note_from_number start_base):
+        start_base_(start_base)
     {}
 
-    explicit flow(float initial_note_length):
-        current_note_length_(initial_note_length)
+    explicit flow(float start_note_length):
+        start_note_length_(start_note_length)
     {}
 
-    flow(note_from_number base, float initial_note_length):
-        current_base_(base),
-        current_note_length_(initial_note_length)
+    flow(note_from_number start_base, float start_note_length):
+        start_base_(start_base),
+        start_note_length_(start_note_length)
     {}
 
     template<typename... Ts>
     flow& operator()(Ts&&... args)
     {
-        sequences_.emplace_back(current_base_, current_note_length_);
-        sequences_.back()(std::forward<Ts>(args)...);
+        (items_.emplace_back(std::forward<Ts>(args)), ...);                    
         return *this;
     }
-
+    
     flow& base(note_from_number new_base)
     {
-        current_base_ = new_base;
+        items_.emplace_back(base_change{new_base});
         return *this;
     }
 
     flow& note_length(float length_seconds)
     {
-        current_note_length_ = length_seconds;
+        items_.emplace_back(note_length_change{length_seconds});
+        return *this;
+    }
+    
+    flow& rep(uint64_t n)
+    {
+        items_.emplace_back(repeat_marker{n});
+        return *this;
+    }
+    
+    flow& per()
+    {
+        items_.emplace_back(repeat_done_marker{});
+        return *this;
+    }
+    
+    flow& alt()
+    {
+        items_.emplace_back(alt_marker{});
+        return *this;
+    }
+    
+    flow& tla()
+    {
+        items_.emplace_back(alt_done_marker{});
         return *this;
     }
 
-    const sequences& get_sequences() const { return sequences_; }
-    
-    constexpr float total_duration() const
-    {
-        float duration = 0.0f;
-        for (const auto& seq : sequences_)
-        {
-            duration += seq.total_duration();
-        }
-        return duration;
-    }
+    float get_start_note_length() const { return start_note_length_; }
+    note_from_number get_start_base() const { return start_base_; }
+    const flow_items& get_items() const { return items_; }    
 
+    size_t item_count() const { return items_.size(); }
+    
 private:
-    sequences sequences_;
-    note_from_number current_base_{nullptr};
-    float current_note_length_{1.0f};
+    flow_items items_;
+    note_from_number start_base_{nullptr};
+    float start_note_length_{1.0f};
 };
 }

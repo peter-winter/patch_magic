@@ -26,12 +26,10 @@ void sine_440_220_mixed()
         }
     };
     
-    std::vector<flow_source> flows
-    {
-        { "seq", flow(10.0f)(1) }
-    };
+    std::vector<flow_source> flows;
+    flows.emplace_back("note", flow(10.0f)(_(1)) );
     
-    std::vector<instrument_source> instruments{{"i1", "sine440", "seq"}, {"i2", "sine220", "seq"}};
+    std::vector<instrument_source> instruments{{"i1", "sine440", "note"}, {"i2", "sine220", "note"}};
     
     source src{ patches, instruments, flows };
     

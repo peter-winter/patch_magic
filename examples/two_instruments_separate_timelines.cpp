@@ -32,13 +32,9 @@ void two_instruments_separate_timelines()
         }
     };
 
-    std::vector<flow_source> flows
-    {
-        // Bass timeline: note every 2 seconds
-        { "bass_tl", flow(2.0f)(1, x) },
-        // Treble timeline: note every 1 second (twice as often)
-        { "treble_tl", flow()(1, x, 1, x) }
-    };
+    std::vector<flow_source> flows;
+    flows.emplace_back("bass_tl", flow(2.0f)(_(1, x)));
+    flows.emplace_back("treble_tl", flow()(_(1, x, 1, x)));
 
     std::vector<instrument_source> instruments
     {
