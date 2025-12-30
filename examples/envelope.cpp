@@ -29,7 +29,7 @@ void envelope()
     auto seq = _(c(3), x, g(3), x, e(3), x);
     
     std::vector<flow_source> flows;
-    flows.emplace_back("f", flow()(seq));
+    flows.emplace_back("f", flow { seq });
     
     std::vector<instrument_source> instruments{{"i1", "sine440", "f"}};
     

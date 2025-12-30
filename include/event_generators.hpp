@@ -35,67 +35,6 @@ struct timed_event
 
 using timed_events = std::vector<timed_event>;
 
-struct loop_stack
-{
-    struct loop_stack_item
-    {
-        uint64_t counter_;
-        size_t idx_;
-    };
-    
-    void start(uint64_t n, size_t i)
-    {
-        items_.push_back({n, i});
-    }
-    
-    size_t next(size_t i)
-    {
-        if (items_.empty())
-            throw std::out_of_range("No current loop");
-            
-        auto& b = items_.back();
-        --b.counter_;
-        if (b.counter_ == 0)
-        {
-            items_.pop_back();
-            return i + 1;
-        }
-        return b.idx_;
-    }
-    
-    std::vector<exceution_stack_item> items_;
-};
-
-struct alt_stack
-{
-    struct alt_stack_item
-    {
-        size_t alt_;
-        size_t count_;
-    };
-    
-    size_t alt(uint64_t n)
-    {
-        items_.push_back({0, n});
-        
-    }
-    
-    size_t alt_finish(size_t i)
-    {
-        if (items_.empty())
-            throw std::out_of_range("No current alt");
-        
-        auto& b = items_.back();    
-        b.alt_++;
-        if (b.alt_ == b.count_)
-            b.alt_ = 0;
-            
-        return i + 1;
-    }
-    
-    std::vector<exceution_stack_item> items_;
-};
-
 class event_generator
 {
 public:
@@ -122,6 +61,7 @@ private:
     timed_events timed_events_;
     std::vector<timed_event>::const_iterator next_event_it_;
     event_view current_event_view_;
+    uint64_t total_samples_;
 };
 
 

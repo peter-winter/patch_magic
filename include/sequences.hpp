@@ -6,7 +6,9 @@
 
 #include <variant>
 #include <vector>
+#include <array>
 #include <cstdint>
+#include <stdexcept>
 
 namespace patch_magic
 {
@@ -81,20 +83,6 @@ inline sequence operator + (const sequence& s1, const sequence& s2)
     return ret;
 }
 
-struct repeat_marker
-{
-    uint64_t n_;
-};
-
-struct repeat_done_marker
-{};
-
-struct alt_marker
-{};
-
-struct alt_done_marker
-{};
-
 struct note_length_change
 {
     float val_;
@@ -105,79 +93,61 @@ struct base_change
     note_from_number base_;
 };
 
-using flow_item = std::variant<sequence, repeat_marker, repeat_done_marker, alt_marker, alt_done_marker, note_length_change, base_change>;
-using flow_items = std::vector<flow_item>;
+using flow_item = std::variant<sequence, note_length_change, base_change>;
+using flow = std::vector<flow_item>;
 
-class flow
+inline flow_item base(note_from_number b) { return base_change{b}; }
+inline flow_item note_len(float v) { return note_length_change{v}; }
+
+inline auto operator >>= (flow f, flow_item i)
 {
-public:
-    flow() = default;
+    flow ret(std::move(f));
+    ret.emplace_back(std::move(i));
+    return ret;
+}
 
-    explicit flow(note_from_number start_base):
-        start_base_(start_base)
+inline auto operator >>= (flow f1, flow f2)
+{
+    flow ret(std::move(f1));
+    ret.insert(ret.end(), std::make_move_iterator(f2.begin()), std::make_move_iterator(f2.end()));
+    return ret;
+}
+
+inline auto operator >>= (flow_item i, flow f)
+{
+    flow ret{i};
+    ret.insert(ret.end(), std::make_move_iterator(f.begin()), std::make_move_iterator(f.end()));
+    return ret;
+}
+
+inline auto operator >>= (flow_item i1, flow_item i2)
+{
+    return flow{std::move(i1), std::move(i2)};
+}
+
+struct pattern
+{
+    pattern(std::initializer_list<uint64_t> list):
+        p_(list)
     {}
-
-    explicit flow(float start_note_length):
-        start_note_length_(start_note_length)
-    {}
-
-    flow(note_from_number start_base, float start_note_length):
-        start_base_(start_base),
-        start_note_length_(start_note_length)
-    {}
-
+    
+    std::vector<uint64_t> p_;
+    
     template<typename... Ts>
-    flow& operator()(Ts&&... args)
+    inline flow operator ()(Ts&&... args)
     {
-        (items_.emplace_back(std::forward<Ts>(args)), ...);                    
-        return *this;
+        std::vector<std::variant<flow, flow_item>> arg_v{std::forward<Ts>(args)...};
+        
+        flow ret;
+        for (uint64_t x : p_)
+        {
+            if (x >= arg_v.size())
+                throw std::out_of_range("Not enough arguments passed pattern()");
+            std::visit([&]<typename T>(T&& v){ ret = (ret >>= std::forward<T>(v)); }, arg_v[x]);
+        }
+        
+        return ret;
     }
-    
-    flow& base(note_from_number new_base)
-    {
-        items_.emplace_back(base_change{new_base});
-        return *this;
-    }
-
-    flow& note_length(float length_seconds)
-    {
-        items_.emplace_back(note_length_change{length_seconds});
-        return *this;
-    }
-    
-    flow& rep(uint64_t n)
-    {
-        items_.emplace_back(repeat_marker{n});
-        return *this;
-    }
-    
-    flow& per()
-    {
-        items_.emplace_back(repeat_done_marker{});
-        return *this;
-    }
-    
-    flow& alt()
-    {
-        items_.emplace_back(alt_marker{});
-        return *this;
-    }
-    
-    flow& tla()
-    {
-        items_.emplace_back(alt_done_marker{});
-        return *this;
-    }
-
-    float get_start_note_length() const { return start_note_length_; }
-    note_from_number get_start_base() const { return start_base_; }
-    const flow_items& get_items() const { return items_; }    
-
-    size_t item_count() const { return items_.size(); }
-    
-private:
-    flow_items items_;
-    note_from_number start_base_{nullptr};
-    float start_note_length_{1.0f};
 };
+
 }

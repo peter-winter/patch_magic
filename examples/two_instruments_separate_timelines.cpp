@@ -33,8 +33,8 @@ void two_instruments_separate_timelines()
     };
 
     std::vector<flow_source> flows;
-    flows.emplace_back("bass_tl", flow(2.0f)(_(1, x)));
-    flows.emplace_back("treble_tl", flow()(_(1, x, 1, x)));
+    flows.emplace_back("bass_tl", flow{ note_len(2.0f) , _(1, x) });
+    flows.emplace_back("treble_tl", flow{ _(1, x, 1, x) });
 
     std::vector<instrument_source> instruments
     {

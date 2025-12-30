@@ -3,10 +3,11 @@
 #include <sequences.hpp>
 
 using namespace patch_magic;
+namespace ch = patch_magic::chords;
 
-void arpeggio()
+void melody()
 {
-    std::cout << "=== Arpeggio in D-Minor, overlapping notes ===\n";
+    std::cout << "=== Melody using patterns and chords ===\n";
     
     synth s;
     
@@ -25,20 +26,15 @@ void arpeggio()
     auto a = _(0, 0, 1, 0, 2, 1, x, _(3, 3), 2, x, 3, 3, 4, 3);
     auto b = a + _(2, 3);
     auto c = b + _(1, 2);
-    auto d = c + _(0, 1);
+    auto d = c + _(3, 4);
+    
+    pattern p{0, 1, 0, 2, 0, 1, 0, 3};
+    auto melody = p(a, b, c, d); // becomes a b a c a b a d
+    
+    auto whole = base(ch::d_minor[3]) >>= melody >>= base(ch::f_major[3]) >>= melody;
     
     std::vector<flow_source> flows;
-    flows.emplace_back(
-        "f", 
-        flow(0.25f)
-            .rep(2)
-                .alt()
-                    .base(chords::a_minor[3])
-                    .base(chords::d_minor[4])
-                .tla()
-                (a, b)
-            .per()
-    );
+    flows.emplace_back("f", note_len(0.15f) >>= whole);
     
     std::vector<instrument_source> instruments{{"i1", "sine", "f"}};
     
@@ -54,5 +50,5 @@ void arpeggio()
     poll_until_done(s);
 }
 
-REGISTER_EXAMPLE(arpeggio);
+REGISTER_EXAMPLE(melody);
 

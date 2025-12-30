@@ -24,7 +24,7 @@ void event_generator::inc()
 
 bool event_generator::done() const
 {
-    return next_event_it_ == timed_events_.end();
+    return current_sample_ == total_samples_;
 }
 
 void event_generator::reset()
@@ -35,28 +35,11 @@ void event_generator::reset()
 void event_generator::generate_timed_events(const flow& f)
 {
     uint64_t progress = 0;
-    float current_note_length = f.get_start_note_length();
-    note_from_number current_base = f.get_start_base();
-    loop_stack loopstack;
-    alt_stack altstack;
-    
-    size_t size = f.get_items().size();
-    
-    auto find_alt_done = [&](size_t from) -> size_t
-    {
-        for (size_t x = from + 1; x < size; ++x)
-        {
-            if (std::holds_alternative<alt_done_marker>(f.get_items()[x]))
-                return x;
-        }
-        throw std::out_of_range("Matching tla not found");
-    };
-    
-    size_t i = 0;
-    while (i < size)
-    {
-        const auto& item = f.get_items()[i];
+    float current_note_length = 1.0f;
+    note_from_number current_base = nullptr;
         
+    for (const auto& item : f)
+    {
         uint64_t this_item_length_in_samples = std::visit(
             overloaded{
                 [&](const sequence& seq){ return static_cast<uint64_t>(current_note_length * sample_rate_ * seq.get_items().size()); },
@@ -67,19 +50,17 @@ void event_generator::generate_timed_events(const flow& f)
         
         std::visit(
             overloaded{
-                [&](const sequence& seq){ generate_timed_events(seq, progress, this_item_length_in_samples, current_base); ++i; },
-                [&](repeat_marker r){ stack.start(r.n_, i + 1); ++i; },
-                [&](repeat_done_marker){ i = stack.next(i); },
-                [&](alt_marker) { i = altstack.alt(find_alt_done(i) - i - 1); },
-                [&](alt_done_marker) { i = altstack.finish(i + 1); },
-                [&](note_length_change change){ current_note_length = change.val_; ++i; },
-                [&](base_change change){ current_base = change.base_; ++i; }
+                [&](const sequence& seq){ generate_timed_events(seq, progress, this_item_length_in_samples, current_base); },
+                [&](note_length_change change){ current_note_length = change.val_; },
+                [&](base_change change){ current_base = change.base_; }
             },
             item
         );
         
         progress += this_item_length_in_samples;
     }
+    
+    total_samples_ = progress;
 }
 
 void event_generator::generate_timed_events(const sequence& s, uint64_t progress, uint64_t sequence_length_in_samples, note_from_number base)
@@ -121,7 +102,7 @@ void event_generator::generate_timed_events(const note& n, uint64_t progress, ui
 
 void event_generator::prepare_events()
 {
-    if (current_sample_ < next_event_it_->time_point_ || done())
+    if (next_event_it_ == timed_events_.end() || current_sample_ < next_event_it_->time_point_)
     {
         current_event_view_ = event_view{timed_events_.end(), timed_events_.end()};
         return;
